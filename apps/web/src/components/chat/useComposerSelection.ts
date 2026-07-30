@@ -8,6 +8,7 @@ import { useApplyThreadModelPick } from "./useApplyThreadModelPick";
 import {
   type EnvironmentId,
   type ModelSelection,
+  type ProviderOptionSelection,
   ProviderInstanceId,
   type ServerProvider,
   type ThreadId,
@@ -132,9 +133,21 @@ export function useComposerSelection(input: ComposerSelectionInput) {
   const onProviderModelSelect = (
     instanceId: ProviderInstanceId,
     model: string,
-    options?: { focusComposer?: boolean },
+    options?:
+      | ReadonlyArray<ProviderOptionSelection>
+      | {
+          focusComposer?: boolean;
+          modelOptions?: ReadonlyArray<ProviderOptionSelection> | undefined;
+        },
   ) => {
     if (!activeThread) return;
+    const modelOptions = Array.isArray(options)
+      ? options
+      : options && "modelOptions" in options
+        ? options.modelOptions
+        : undefined;
+    const shouldFocusComposer =
+      options === undefined || !("focusComposer" in options) || options.focusComposer !== false;
     const entry = providerStatuses.find((snapshot) => snapshot.instanceId === instanceId);
     const resolvedDriverKind = entry?.driver ?? null;
     if (
@@ -143,7 +156,7 @@ export function useComposerSelection(input: ComposerSelectionInput) {
       resolvedDriverKind !== null &&
       resolvedDriverKind !== lockedProvider
     ) {
-      if (options?.focusComposer !== false) scheduleComposerFocus();
+      if (shouldFocusComposer) scheduleComposerFocus();
       return;
     }
     if (
@@ -159,7 +172,7 @@ export function useComposerSelection(input: ComposerSelectionInput) {
         entry?.continuation?.groupKey &&
         currentEntry.continuation.groupKey !== entry.continuation.groupKey
       ) {
-        if (options?.focusComposer !== false) scheduleComposerFocus();
+        if (shouldFocusComposer) scheduleComposerFocus();
         return;
       }
     }
@@ -184,16 +197,18 @@ export function useComposerSelection(input: ComposerSelectionInput) {
       draft?.modelSelectionByProvider[shownInstanceId] ?? activeThread.modelSelection;
     if (
       !resolvedModel ||
-      (instanceId === shownInstanceId &&
+      (modelOptions === undefined &&
+        instanceId === shownInstanceId &&
         shownSelection.instanceId === instanceId &&
         shownSelection.model === resolvedModel)
     ) {
       // Re-picking the shown model keeps its options and saves it again if that save failed.
       if (resolvedModel && !isLocalDraftThread) applyThreadModelPick(threadRef);
-      if (options?.focusComposer !== false) scheduleComposerFocus();
+      if (shouldFocusComposer) scheduleComposerFocus();
       return;
     }
     const rememberedOptions =
+      modelOptions ??
       useComposerDraftStore.getState().stickyOptionsByModelByProvider[instanceId]?.[resolvedModel];
     const threadSelection = activeThread.modelSelection;
     // This pick replaces the stored options, so the thread's own model carries them over.
@@ -226,7 +241,7 @@ export function useComposerSelection(input: ComposerSelectionInput) {
         title: modelChangeBlockReason.title,
         description: modelChangeBlockReason.description,
       });
-      if (options?.focusComposer !== false) scheduleComposerFocus();
+      if (shouldFocusComposer) scheduleComposerFocus();
       return;
     }
     setComposerDraftModelSelection(threadRef, nextModelSelection, {
@@ -235,7 +250,7 @@ export function useComposerSelection(input: ComposerSelectionInput) {
     });
     setStickyComposerModelSelection(nextModelSelection);
     if (!isLocalDraftThread) applyThreadModelPick(threadRef);
-    if (options?.focusComposer !== false) scheduleComposerFocus();
+    if (shouldFocusComposer) scheduleComposerFocus();
   };
   const onProviderModelSelectStable = useStableCallback(onProviderModelSelect);
   const onEnvModeChange = (mode: DraftThreadEnvMode) => {

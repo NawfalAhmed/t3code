@@ -99,6 +99,7 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
   iconClassName?: string;
   badgeClassName?: string;
   indicatorBackground?: string;
+  opacity?: number | undefined;
 }) {
   const Icon = PROVIDER_ICON_BY_PROVIDER[props.driverKind] ?? null;
   const packageIcon = providerClients.get(props.driverKind)?.icon;
@@ -127,7 +128,7 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
         "relative isolate z-30 inline-flex shrink-0 items-center justify-center overflow-visible",
         props.className,
       )}
-      style={accentStyle}
+      style={{ ...accentStyle, opacity: props.opacity }}
       data-provider-accent-color={accentColor}
     >
       {isAcpRegistry ? (
