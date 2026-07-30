@@ -9,7 +9,7 @@ import type { EffortDisplay } from "@t3tools/contracts/settings";
 import { getProviderOptionCurrentLabel } from "@t3tools/shared/model";
 import { msg, T, useGT, useMessages } from "gt-react";
 import { CheckIcon, ChevronRightIcon, ChevronUpIcon, WorkflowIcon } from "lucide-react";
-import { type KeyboardEvent, type ReactNode, use, useRef, useState } from "react";
+import { type ReactNode, use, useRef, useState } from "react";
 
 import { m, type MessageResolver } from "~/i18n/messages";
 import { cn } from "~/lib/utils";
@@ -25,7 +25,11 @@ import { Switch } from "../ui/switch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import type { ComposerControlSize } from "./ComposerControl";
 import { ComposerPermissionsSection, type RuntimeModeOption } from "./ComposerFooterControls";
-import { composerFloatingLayerProps, focusCheckedPermission } from "./composerEventScope";
+import {
+  composerFloatingLayerProps,
+  focusCheckedPermission,
+  moveEffortFocus,
+} from "./composerEventScope";
 import { EffortGauge, EffortGlyph, FastBolt, resolveEffortGlyph } from "./EffortGlyph";
 import { DockedPickerContext } from "./ProviderModelPicker";
 import {
@@ -245,36 +249,6 @@ function ColumnRow(props: {
       </TooltipPopup>
     </Tooltip>
   );
-}
-
-function moveBetweenRows(event: KeyboardEvent<HTMLElement>) {
-  const arrow = event.key === "ArrowDown" || event.key === "ArrowUp";
-  if (
-    !arrow &&
-    (event.key.length !== 1 ||
-      event.key.trim() === "" ||
-      event.ctrlKey ||
-      event.altKey ||
-      event.metaKey ||
-      event.nativeEvent.isComposing)
-  )
-    return;
-  // An option's side menu is a React child here, but it moves through its own items.
-  if (!event.currentTarget.contains(event.target as Node)) return;
-  const rows = Array.from(
-    event.currentTarget.querySelectorAll<HTMLButtonElement>("[data-effort-row]:not(:disabled)"),
-  );
-  const index = rows.findIndex((row) => row === document.activeElement);
-  const next = arrow
-    ? rows[Math.min(rows.length - 1, Math.max(0, index + (event.key === "ArrowDown" ? 1 : -1)))]
-    : [...rows.slice(index + 1), ...rows.slice(0, index + 1)].find((row) =>
-        row.dataset.effortLevel?.toLowerCase().startsWith(event.key.toLowerCase()),
-      );
-  if (!next) return;
-  event.preventDefault();
-  event.stopPropagation();
-  next.focus();
-  next.scrollIntoView({ block: "nearest" });
 }
 
 function EffortLevels(props: { traits: TraitsSelectionInput }) {
@@ -570,7 +544,9 @@ export function ComposerEffortColumn(props: { traits: TraitsSelectionInput | nul
       <div
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-2 pt-2.5 pb-1.5"
         // Capture, so Up and Down on an option row move rows instead of opening its menu.
-        onKeyDownCapture={moveBetweenRows}
+        onKeyDownCapture={(event) =>
+          moveEffortFocus(event, event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0)
+        }
       >
         {props.traits ? <EffortLevels traits={props.traits} /> : <NoEffortRow />}
       </div>
