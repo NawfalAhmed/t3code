@@ -3,6 +3,7 @@ import type { PromptUltrathink } from "./TraitsPicker";
 import type { ProviderInstanceEntry } from "../../providerInstances";
 import { type AppModelOption } from "../../modelSelection";
 import { CircleAlertIcon } from "lucide-react";
+import type { ComponentProps } from "react";
 import { CompactComposerControlsMenu } from "./CompactComposerControlsMenu";
 import { ComposerControl } from "./ComposerControl";
 import {
@@ -13,6 +14,7 @@ import {
 import {
   type EnvironmentId,
   type ModelSelection,
+  type ProviderOptionSelection,
   type ProviderDriverKind,
   type ProviderInstanceId,
   type RuntimeMode,
@@ -23,6 +25,7 @@ import { cn } from "~/lib/utils";
 import { resolveComposerTraitsInput } from "./composerProviderState";
 import { useApplyThreadModelPick } from "./useApplyThreadModelPick";
 import { useStableCallback } from "../../hooks/useStableCallback";
+import { TraitsMenuContent } from "./TraitsPicker";
 import {
   ComposerEffortColumn,
   ComposerPickerFooter,
@@ -30,6 +33,13 @@ import {
 } from "./ComposerModelEffort";
 import type { useComposerProviderModel } from "./useComposerProviderModel";
 import { resolveComposerControlsOwnership } from "./composerControlsOwnership";
+import {
+  ModelReasoningPicker,
+  modelReasoningMoreHiddenDescriptorIds,
+  shouldShowModelReasoningMoreOption,
+} from "./ModelReasoningPicker";
+import { buildModelReasoningGridSpec } from "./ModelReasoningGrid";
+import type { ProviderModelPicker } from "./ProviderModelPicker";
 
 /**
  * The composer footer controls: the model picker (which also holds effort, speed and
@@ -53,6 +63,10 @@ export function ComposerControlsBar(props: {
   reportedModelSelection: ChatComposerProps["reportedModelSelection"];
   promptUltrathink: PromptUltrathink;
   onPromptEdit: (edit: (prompt: string) => string) => void;
+  onModelReasoningOptionsChange: (
+    options: ReadonlyArray<ProviderOptionSelection> | undefined,
+  ) => void;
+  providerToggle: ComponentProps<typeof ProviderModelPicker>["providerToggle"] | null;
   effortDisplay: EffortDisplay;
   /** The strip under a new thread names the permissions, so the row does not repeat them. */
   permissionsShownInStrip: boolean;
@@ -100,6 +114,8 @@ export function ComposerControlsBar(props: {
     reportedModelSelection,
     promptUltrathink,
     onPromptEdit,
+    onModelReasoningOptionsChange,
+    providerToggle,
     compatibleRuntimeMode,
     defaultRuntimeMode,
     compatibleRuntimeModeOptions,
@@ -162,6 +178,62 @@ export function ComposerControlsBar(props: {
     onPromptEdit,
   });
   const effort = describeComposerEffort(traitsInput, props.effortDisplay, controlSize);
+  // Codex and Claude pick model and reasoning from a grid beside the provider toggle; the full
+  // picker (meta-click on the toggle) keeps its effort column for every other model.
+  const modelReasoningSpec =
+    multipleModelSelections === null
+      ? buildModelReasoningGridSpec({
+          provider: selectedProvider,
+          models: selectedProviderModels,
+          model: selectedModel,
+          modelOptions: composerModelOptions?.[selectedInstanceId],
+        })
+      : null;
+  const modelReasoningPicker = modelReasoningSpec ? (
+    <ModelReasoningPicker
+      size={controlSize}
+      effortDisplay={props.effortDisplay}
+      permissionsOwnsShortcut={pickerOwnsModeShortcut}
+      spec={modelReasoningSpec}
+      promptUltrathink={promptUltrathink}
+      traitsMenuContent={
+        traitsInput ? (
+          <TraitsMenuContent
+            {...traitsInput}
+            hiddenDescriptorIds={modelReasoningMoreHiddenDescriptorIds(selectedProvider)}
+            optionFilter={shouldShowModelReasoningMoreOption}
+          />
+        ) : null
+      }
+      provider={selectedProvider}
+      instanceId={selectedInstanceId}
+      models={selectedProviderModels}
+      model={selectedModel}
+      modelOptions={composerModelOptions?.[selectedInstanceId]}
+      reportedModelSelection={reportedModelSelection}
+      {...(!props.permissionsShownInStrip
+        ? {
+            permissions: {
+              runtimeMode: compatibleRuntimeMode,
+              runtimeModeOptions: compatibleRuntimeModeOptions,
+              onRuntimeModeChange: handleRuntimeModeChange,
+            },
+          }
+        : {})}
+      getModelDisabledReason={(nextModel) =>
+        selectedProvider === "claudeAgent" && promptUltrathink === "body"
+          ? "Reasoning is controlled by ultrathink in the prompt"
+          : getModelDisabledReason(selectedInstanceId, nextModel)
+      }
+      onModelOptionsChange={onModelReasoningOptionsChange}
+      onModelChange={(nextModel, nextOptions) => {
+        if (selectedProvider === "claudeAgent" && promptUltrathink !== "none") {
+          onPromptEdit((prompt) => prompt.replace(/^Ultrathink:\s*/i, ""));
+        }
+        onProviderModelSelect(selectedInstanceId, nextModel, nextOptions);
+      }}
+    />
+  ) : null;
   const restingBlockDefs = showModeBlock
     ? [
         {
@@ -190,6 +262,7 @@ export function ComposerControlsBar(props: {
       // The trigger grows away from this edge when its model or effort label changes.
       popupAlign={composerControlsCollapsed ? "start" : "end"}
       disabled={providerCatalogPending || isSendBusy}
+      {...(providerToggle ? { providerToggle } : {})}
       multipleModelsEnabled={multipleModelsEnabled}
       multipleModelSelections={multipleModelSelections}
       onMultipleModelSelectionsChange={onMultipleModelSelectionsChange}
@@ -211,16 +284,25 @@ export function ComposerControlsBar(props: {
       keybindings={keybindings}
       modelOptionsByInstance={modelOptionsByInstance}
       size={controlSize}
-      triggerClassName={cn(
-        "group/model-trigger",
-        MODEL_TRIGGER_STATES,
-        composerControlsCollapsed ? "min-w-13 shrink text-xs!" : "min-w-13",
-      )}
-      triggerSuffix={effort.suffix}
-      triggerDetail={effort.detail}
-      triggerShortcuts={
-        pickerOwnsModeShortcut ? "composer.effort composer.mode" : "composer.effort"
+      triggerClassName={
+        providerToggle
+          ? cn("shrink-0 justify-center", composerControlsCollapsed ? "px-1" : "px-1.5")
+          : cn(
+              "group/model-trigger",
+              MODEL_TRIGGER_STATES,
+              composerControlsCollapsed ? "min-w-13 shrink text-xs!" : "min-w-13",
+            )
       }
+      // The grid names and owns effort when it shows, so the picker trigger stays a model label.
+      {...(modelReasoningPicker
+        ? {}
+        : {
+            triggerSuffix: effort.suffix,
+            triggerDetail: effort.detail,
+            triggerShortcuts: pickerOwnsModeShortcut
+              ? "composer.effort composer.mode"
+              : "composer.effort",
+          })}
       effortColumn={<ComposerEffortColumn traits={traitsInput} />}
       footer={
         <ComposerPickerFooter
@@ -263,6 +345,7 @@ export function ComposerControlsBar(props: {
   ) : (
     <>
       {composerModelPicker}
+      {modelReasoningPicker}
 
       <>
         {restingBlockDefs.map((def, index) => {

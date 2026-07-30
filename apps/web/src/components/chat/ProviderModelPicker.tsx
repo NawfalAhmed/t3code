@@ -19,11 +19,12 @@ import {
 import { Badge } from "../ui/badge";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import { cn } from "~/lib/utils";
+import { cn, isMacPlatform } from "~/lib/utils";
 import { ModelPickerContent, resolveModelPickerSelectedModel } from "./ModelPickerContent";
 import { retainedModelWhileProviderLocked } from "./ProviderModelPicker.logic";
 import { ChatGptSharingControl } from "./ChatGptSharingControl";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import { providerIconOpacity } from "./providerIconOpacity";
 import { ModelEsque, getDisplayModelName, getTriggerDisplayModelName } from "./providerIconUtils";
 import { shouldShowInstanceBadge, type ProviderInstanceEntry } from "../../providerInstances";
 import { ComposerControl, type ComposerControlSize } from "./ComposerControl";
@@ -86,6 +87,10 @@ function lockBackgroundScroll(popup: HTMLElement | null) {
 /** What a docked effort column needs from its picker: the model it serves. */
 export const DockedPickerContext = createContext<{ modelLabel: string }>({ modelLabel: "" });
 
+function metaKeyLabel(): string {
+  return typeof navigator !== "undefined" && isMacPlatform(navigator.platform) ? "\u2318" : "Ctrl";
+}
+
 export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   environmentId: EnvironmentId | null;
   workspaceCwd?: string | null;
@@ -98,6 +103,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   instanceEntries: ReadonlyArray<ProviderInstanceEntry>;
   keybindings?: ResolvedKeybindingsConfig;
   modelOptionsByInstance: ReadonlyMap<ProviderInstanceId, ReadonlyArray<ModelEsque>>;
+  providerToggle?: {
+    entries: ReadonlyArray<ProviderInstanceEntry>;
+    onToggle: (options?: { focusComposer: boolean }) => void;
+  };
   activeProviderIconClassName?: string;
   instanceIndicatorBackground?: string;
   size?: ComposerControlSize;
@@ -319,6 +328,17 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
     />
   );
 
+  const providerToggle = props.providerToggle ?? null;
+  const canToggle = (providerToggle?.entries.length ?? 0) > 1;
+  const showBothIcons = canToggle;
+  const toggleTargetEntry =
+    providerToggle?.entries.find((entry) => entry.instanceId !== activeInstanceId) ?? null;
+  // A provider switch leaves the full picker closed.
+  const suppressOpenRef = useRef(false);
+  const toggleTooltipContent = toggleTargetEntry
+    ? `Switch to ${toggleTargetEntry.displayName} · ${metaKeyLabel()}-click for all models`
+    : (props.triggerLabel ?? triggerLabel);
+
   return (
     <Popover
       open={isMenuOpen}
@@ -327,6 +347,12 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           setIsMenuOpen(false);
           return;
         }
+        if (open && suppressOpenRef.current) {
+          suppressOpenRef.current = false;
+          providerToggle?.onToggle();
+          return;
+        }
+        suppressOpenRef.current = false;
         setIsMenuOpen(open);
       }}
       onOpenChangeComplete={(open) => {
@@ -338,16 +364,23 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         render={
           <ComposerControl
             ref={triggerRef}
-            aria-label={[
-              props.triggerAriaLabel ?? props.triggerLabel ?? allModelNames ?? triggerLabel,
-              props.triggerDetail,
-            ]
-              .filter(Boolean)
-              .join(", ")}
+            aria-label={
+              providerToggle
+                ? toggleTargetEntry
+                  ? `Switch to ${toggleTargetEntry.displayName}`
+                  : (props.triggerLabel ?? triggerLabel)
+                : [
+                    props.triggerAriaLabel ?? props.triggerLabel ?? allModelNames ?? triggerLabel,
+                    props.triggerDetail,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")
+            }
             size={size}
             data-chat-provider-model-picker="true"
             data-composer-shortcut={props.triggerShortcuts}
             onClick={(event) => {
+              suppressOpenRef.current = canToggle && !event.metaKey && !event.ctrlKey;
               if (!isMenuOpen || !docked) return;
               const target = takeOpenTarget(triggerRef.current);
               if (!target) return;
@@ -368,72 +401,125 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           />
         }
       >
-        <span
-          className={cn("flex min-w-0 flex-1 items-center", size === "xs" ? "gap-1" : "gap-1.5")}
-        >
-          {selectedEntries && props.triggerLabel === undefined ? (
-            <span
-              data-chat-provider-model-picker-icon
-              className="flex shrink-0 items-center -space-x-1"
-              aria-hidden="true"
+        {providerToggle ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span
+                  className={cn(
+                    "relative inline-flex h-4 items-center",
+                    showBothIcons ? "w-7" : "w-4",
+                  )}
+                />
+              }
+              data-chat-provider-model-picker-toggle="true"
             >
-              {selectedEntries
-                .slice(0, 3)
-                .map((selection) =>
-                  selection.entry ? (
-                    <ProviderInstanceIcon
-                      key={`${selection.instanceId}:${selection.model}`}
-                      driverKind={selection.entry.driverKind}
-                      displayName={selection.entry.displayName}
-                      accentColor={selection.entry.accentColor}
-                      acpRegistryAgentId={selection.entry.acpRegistryAgentId}
-                      acpRegistryIconUrl={selection.entry.acpRegistryIconUrl}
-                      className="size-4 rounded-full bg-(--chat-composer-glass-surface,var(--background)) ring-2 ring-(--chat-composer-glass-surface,var(--background))"
-                      iconClassName="size-4"
-                    />
-                  ) : null,
-                )}
-              {selectedEntries.length > 3 ? (
-                <span className="relative z-30 flex size-4 items-center justify-center rounded-full bg-(--chat-composer-glass-surface,var(--background)) text-3xs ring-2 ring-(--chat-composer-glass-surface,var(--background))">
-                  +{selectedEntries.length - 3}
-                </span>
-              ) : null}
-            </span>
-          ) : activeEntry && props.triggerLabel === undefined ? (
-            // Narrow compacted composers hide the provider icon before truncating the name.
-            <span data-chat-provider-model-picker-icon className="contents">
-              <ProviderInstanceIcon
-                driverKind={activeEntry.driverKind}
-                displayName={activeEntry.displayName}
-                accentColor={activeEntry.accentColor}
-                acpRegistryAgentId={activeEntry.acpRegistryAgentId}
-                acpRegistryIconUrl={activeEntry.acpRegistryIconUrl}
-                showBadge={showInstanceBadge}
-                className="size-4"
-                iconClassName={cn("size-4", props.activeProviderIconClassName)}
-                indicatorBackground={props.instanceIndicatorBackground ?? "var(--contrast-input)"}
-                badgeClassName={cn(
-                  "right-[-0.125rem] bottom-[-0.125rem] h-3 min-w-3 px-0.5 text-5xs",
-                  size === "xs" && "shadow-none",
-                )}
-              />
-            </span>
-          ) : null}
-          {props.isComposerOwned ? (
-            <span {...triggerTextProps}>{triggerText}</span>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger render={<span {...triggerTextProps} />}>{triggerText}</TooltipTrigger>
-              <TooltipPopup side="top">{triggerTooltipContent}</TooltipPopup>
-            </Tooltip>
-          )}
-          {props.triggerSuffix}
-          {selectedModel?.isUnavailable && !selectedEntries && props.triggerLabel === undefined ? (
-            <Badge variant="outline" size="sm">
-              Unavailable
-            </Badge>
-          ) : null}
-        </span>
+              {providerToggle.entries.map((entry) => {
+                const isActive = entry.instanceId === activeInstanceId;
+                return (
+                  <ProviderInstanceIcon
+                    key={entry.instanceId}
+                    driverKind={entry.driverKind}
+                    displayName={entry.displayName}
+                    accentColor={entry.accentColor}
+                    opacity={providerIconOpacity(
+                      entry.driverKind,
+                      showBothIcons ? (isActive ? "active" : "inactive") : "default",
+                    )}
+                    className={cn(
+                      "size-4",
+                      showBothIcons &&
+                        "absolute bottom-0 left-0 origin-bottom-left transition-[translate,scale,opacity] duration-250 ease-out motion-reduce:transition-none",
+                      showBothIcons &&
+                        (isActive ? "z-10 translate-x-3 scale-100" : "translate-x-0 scale-[0.625]"),
+                    )}
+                    iconClassName={cn("size-4", props.activeProviderIconClassName)}
+                    indicatorBackground={
+                      props.instanceIndicatorBackground ?? "var(--contrast-input)"
+                    }
+                  />
+                );
+              })}
+            </TooltipTrigger>
+            <TooltipPopup side="top">{toggleTooltipContent}</TooltipPopup>
+          </Tooltip>
+        ) : (
+          <span
+            className={cn("flex min-w-0 flex-1 items-center", size === "xs" ? "gap-1" : "gap-1.5")}
+          >
+            {selectedEntries && props.triggerLabel === undefined ? (
+              <span
+                data-chat-provider-model-picker-icon
+                className="flex shrink-0 items-center -space-x-1"
+                aria-hidden="true"
+              >
+                {selectedEntries
+                  .slice(0, 3)
+                  .map((selection) =>
+                    selection.entry ? (
+                      <ProviderInstanceIcon
+                        key={`${selection.instanceId}:${selection.model}`}
+                        driverKind={selection.entry.driverKind}
+                        displayName={selection.entry.displayName}
+                        accentColor={selection.entry.accentColor}
+                        acpRegistryAgentId={selection.entry.acpRegistryAgentId}
+                        acpRegistryIconUrl={selection.entry.acpRegistryIconUrl}
+                        className="size-4 rounded-full bg-(--chat-composer-glass-surface,var(--background)) ring-2 ring-(--chat-composer-glass-surface,var(--background))"
+                        iconClassName="size-4"
+                        iconOpacity={providerIconOpacity(selection.entry.driverKind, "active")}
+                      />
+                    ) : null,
+                  )}
+                {selectedEntries.length > 3 ? (
+                  <span className="relative z-30 flex size-4 items-center justify-center rounded-full bg-(--chat-composer-glass-surface,var(--background)) text-3xs ring-2 ring-(--chat-composer-glass-surface,var(--background))">
+                    +{selectedEntries.length - 3}
+                  </span>
+                ) : null}
+              </span>
+            ) : activeEntry && props.triggerLabel === undefined ? (
+              // Narrow compacted composers hide the provider icon before truncating the name.
+              <span data-chat-provider-model-picker-icon className="contents">
+                <ProviderInstanceIcon
+                  driverKind={activeEntry.driverKind}
+                  displayName={activeEntry.displayName}
+                  accentColor={activeEntry.accentColor}
+                  acpRegistryAgentId={activeEntry.acpRegistryAgentId}
+                  acpRegistryIconUrl={activeEntry.acpRegistryIconUrl}
+                  showBadge={showInstanceBadge}
+                  opacity={providerIconOpacity(
+                    activeEntry.driverKind,
+                    props.lockedProvider !== null ? "default" : "active",
+                  )}
+                  className="size-4"
+                  iconClassName={cn("size-4", props.activeProviderIconClassName)}
+                  indicatorBackground={props.instanceIndicatorBackground ?? "var(--contrast-input)"}
+                  badgeClassName={cn(
+                    "right-[-0.125rem] bottom-[-0.125rem] h-3 min-w-3 px-0.5 text-5xs",
+                    size === "xs" && "shadow-none",
+                  )}
+                />
+              </span>
+            ) : null}
+            {props.isComposerOwned ? (
+              <span {...triggerTextProps}>{triggerText}</span>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger render={<span {...triggerTextProps} />}>
+                  {triggerText}
+                </TooltipTrigger>
+                <TooltipPopup side="top">{triggerTooltipContent}</TooltipPopup>
+              </Tooltip>
+            )}
+            {props.triggerSuffix}
+            {selectedModel?.isUnavailable &&
+            !selectedEntries &&
+            props.triggerLabel === undefined ? (
+              <Badge variant="outline" size="sm">
+                Unavailable
+              </Badge>
+            ) : null}
+          </span>
+        )}
       </PopoverTrigger>
       <PopoverPopup
         {...(props.isComposerOwned ? composerFloatingLayerProps : {})}

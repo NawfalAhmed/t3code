@@ -376,19 +376,42 @@ export function useTraitsSelection({
 export const ULTRATHINK_IN_BODY_NOTE =
   'Your prompt contains "ultrathink" in the text. Remove it to change this option.';
 
-const TraitsMenuContent = memo(function TraitsMenuContentImpl(props: TraitsSelectionInput) {
+export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
+  hiddenDescriptorIds,
+  optionFilter,
+  ...props
+}: TraitsSelectionInput & {
+  hiddenDescriptorIds?: ReadonlyArray<string>;
+  optionFilter?: (descriptorId: string, optionId: string) => boolean;
+}) {
   const traits = useTraitsSelection(props);
-  const {
-    descriptors,
-    selectDescriptors,
-    booleanDescriptors,
-    primarySelectDescriptor,
-    ultrathinkInBodyText,
-    hasAnyControls,
-    modelIsUnavailable,
-  } = traits;
+  const { primarySelectDescriptor, ultrathinkInBodyText, hasAnyControls, modelIsUnavailable } =
+    traits;
+  const hiddenDescriptorIdSet = new Set(hiddenDescriptorIds ?? []);
+  const descriptors = traits.descriptors
+    .filter((descriptor) => !hiddenDescriptorIdSet.has(descriptor.id))
+    .map((descriptor) =>
+      descriptor.type === "select" && optionFilter
+        ? {
+            ...descriptor,
+            options: descriptor.options.filter((option) => optionFilter(descriptor.id, option.id)),
+          }
+        : descriptor,
+    );
+  const selectDescriptors = descriptors.filter(
+    (descriptor): descriptor is Extract<ProviderOptionDescriptor, { type: "select" }> =>
+      descriptor.type === "select",
+  );
+  const booleanDescriptors = descriptors.filter(
+    (descriptor): descriptor is Extract<ProviderOptionDescriptor, { type: "boolean" }> =>
+      descriptor.type === "boolean",
+  );
+  const hasVisibleControls = modelIsUnavailable
+    ? descriptors.length > 0
+    : selectDescriptors.some((descriptor) => descriptor.options.length > 0) ||
+      booleanDescriptors.length > 0;
 
-  if (!hasAnyControls) {
+  if (!hasAnyControls || !hasVisibleControls) {
     return null;
   }
 

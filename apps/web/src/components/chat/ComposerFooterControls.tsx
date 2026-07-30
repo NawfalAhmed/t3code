@@ -99,13 +99,15 @@ export const ComposerFooterModeControls = memo(function ComposerFooterModeContro
 /**
  * Permission modes as one horizontal toggle, with the shown mode named below.
  * Each segment is a real menu radio item, so arrow keys reach it from the rest of the menu
- * and a pick closes the menu. Lives inside a Menu: the permissions chip, the model picker,
- * or the overflow menu.
+ * and a pick closes the menu. Lives inside a Menu (the permissions chip, the model picker,
+ * or the overflow menu) or, with inPopover, inside the model and reasoning popover.
  */
 export function ComposerPermissionsSection(props: {
   runtimeMode: RuntimeMode;
   runtimeModeOptions: ReadonlyArray<RuntimeModeOption>;
   onRuntimeModeChange: (mode: RuntimeMode) => void;
+  inPopover?: boolean;
+  onSelectionComplete?: () => void;
 }) {
   // Hover or keyboard focus previews a mode's name and description before a pick.
   const [previewMode, setPreviewMode] = useState<RuntimeMode | null>(null);
@@ -114,21 +116,29 @@ export function ComposerPermissionsSection(props: {
     props.runtimeModeOptions.find((option) => option.mode === shownMode) ??
     supervisedRuntimeModeOption;
   const descriptionId = useId();
+  const PermissionsRadioGroup = props.inPopover ? "div" : MenuPrimitive.RadioGroup;
+  const PermissionsRadioItem = props.inPopover ? "button" : MenuPrimitive.RadioItem;
   return (
     <div data-composer-permissions className="grid w-72 gap-1.5 px-2 py-1.5">
       <div className="font-medium text-muted-foreground text-xs">Permissions</div>
-      <MenuPrimitive.RadioGroup
+      <PermissionsRadioGroup
         aria-label="Permissions"
-        value={props.runtimeMode}
-        onValueChange={(value: RuntimeMode) => {
-          if (value !== props.runtimeMode) props.onRuntimeModeChange(value);
-        }}
+        {...(props.inPopover
+          ? { role: "radiogroup" }
+          : {
+              value: props.runtimeMode,
+              onValueChange: (value: RuntimeMode) => {
+                if (value !== props.runtimeMode) props.onRuntimeModeChange(value);
+              },
+            })}
         className="flex rounded-lg bg-input/40 p-0.5"
         // Menus navigate with Up/Down only; the row reads horizontally, so Left/Right move too.
         onKeyDown={(event) => {
           if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
           const items = Array.from(
-            event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitemradio"]'),
+            event.currentTarget.querySelectorAll<HTMLElement>(
+              '[role="menuitemradio"], [role="radio"]',
+            ),
           );
           const index = items.findIndex((item) => item === document.activeElement);
           const next = items[index + (event.key === "ArrowRight" ? 1 : -1)];
@@ -141,14 +151,26 @@ export function ComposerPermissionsSection(props: {
         {props.runtimeModeOptions.map((option) => {
           const OptionIcon = option.icon;
           return (
-            <MenuPrimitive.RadioItem
+            <PermissionsRadioItem
               key={option.mode}
               value={option.mode}
               disabled={option.disabledReason !== undefined}
-              label={option.label}
+              {...(props.inPopover
+                ? {
+                    type: "button" as const,
+                    role: "radio",
+                    "aria-checked": option.mode === props.runtimeMode,
+                    "data-checked": option.mode === props.runtimeMode ? "" : undefined,
+                    "data-disabled": option.disabledReason !== undefined ? "" : undefined,
+                    tabIndex: option.mode === props.runtimeMode ? 0 : -1,
+                    onClick: () => {
+                      if (option.mode !== props.runtimeMode) props.onRuntimeModeChange(option.mode);
+                      props.onSelectionComplete?.();
+                    },
+                  }
+                : { label: option.label, closeOnClick: true })}
               aria-label={option.label}
               aria-describedby={`${descriptionId}-${option.mode}`}
-              closeOnClick
               onPointerEnter={() => setPreviewMode(option.mode)}
               onPointerLeave={() => setPreviewMode(null)}
               onFocus={() => setPreviewMode(option.mode)}
@@ -156,10 +178,10 @@ export function ComposerPermissionsSection(props: {
               className="flex h-6 flex-1 cursor-pointer items-center justify-center text-muted-foreground outline-none first:rounded-l-md last:rounded-r-md data-disabled:cursor-not-allowed data-disabled:opacity-40 data-checked:bg-input/72 data-checked:text-foreground data-highlighted:text-foreground not-data-checked:data-highlighted:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             >
               <OptionIcon aria-hidden="true" className="size-3.5" />
-            </MenuPrimitive.RadioItem>
+            </PermissionsRadioItem>
           );
         })}
-      </MenuPrimitive.RadioGroup>
+      </PermissionsRadioGroup>
       {/* Static per-mode descriptions for screen readers; the preview below is visual only. */}
       {props.runtimeModeOptions.map((option) => (
         <span key={option.mode} id={`${descriptionId}-${option.mode}`} className="sr-only">
