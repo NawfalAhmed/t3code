@@ -1,4 +1,4 @@
-import type { RuntimeMode } from "@t3tools/contracts";
+import { ProviderDriverKind, type RuntimeMode } from "@t3tools/contracts";
 import { type ReactNode, useRef, useState } from "react";
 import { expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
@@ -13,6 +13,7 @@ import {
 } from "./composerEventScope";
 import { ComposerFooterModeControls, ComposerPermissionsSection } from "./ComposerFooterControls";
 import { runtimeModeConfig, runtimeModeOptions } from "./runtimeModeConfig";
+import { ModelReasoningPicker } from "./ModelReasoningPicker";
 
 const options = runtimeModeOptions.map((mode) => ({ mode, ...runtimeModeConfig[mode] }));
 
@@ -116,6 +117,49 @@ it("opens on the checked permission when composer.mode marked the trigger", asyn
   await userEvent.keyboard("{Escape}");
   await userEvent.click(trigger);
   await expect.element(page.getByRole("menuitemradio", { name: "Full access" })).not.toHaveFocus();
+});
+
+function ModelPermissions() {
+  const [mode, setMode] = useState<RuntimeMode>("full-access");
+  return (
+    <>
+      <ModelReasoningPicker
+        provider={ProviderDriverKind.make("codex")}
+        model="gpt-test"
+        models={[]}
+        modelOptions={[]}
+        spec={{
+          columns: [],
+          rows: [{ model: "gpt-test", label: "Test", variant: "Sol", reasoningOptions: [] }],
+        }}
+        permissions={{
+          runtimeMode: mode,
+          runtimeModeOptions: options,
+          onRuntimeModeChange: setMode,
+        }}
+        onModelOptionsChange={() => {}}
+        onModelChange={() => {}}
+      />
+      <p role="status">{mode}</p>
+    </>
+  );
+}
+
+it("opens the grid on its current permission and changes it without a menu context", async () => {
+  // No navigation is involved in choosing model or permission options.
+  await using screen = await render(<ModelPermissions />, { router: false });
+  const trigger = screen.getByRole("button", { name: /Choose model and reasoning/ });
+  markOpenToPermissions(trigger.element() as HTMLElement);
+  await userEvent.click(trigger);
+  await expect.element(page.getByRole("radio", { name: "Full access" })).toHaveFocus();
+  await expect.element(screen.getByRole("status")).toHaveTextContent("full-access");
+  await userEvent.keyboard("{ArrowLeft}");
+  await expect.element(page.getByRole("radio", { name: "Auto", exact: true })).toHaveFocus();
+  await expect.element(screen.getByRole("status")).toHaveTextContent("full-access");
+  await userEvent.keyboard("{ArrowLeft}{ArrowLeft} ");
+  await expect.element(screen.getByRole("status")).toHaveTextContent("approval-required");
+  await expect.element(page.getByRole("radio", { name: "Supervised" })).not.toBeInTheDocument();
+  await expect.element(trigger).toHaveFocus();
 });
 
 // Mirrors ComposerControlsBar: the chip shows only while the mode differs from the default.

@@ -3,6 +3,7 @@ import type { PromptUltrathink } from "./TraitsPicker";
 import type { ProviderInstanceEntry } from "../../providerInstances";
 import { type AppModelOption } from "../../modelSelection";
 import { CircleAlertIcon } from "lucide-react";
+import type { ComponentProps } from "react";
 import { CompactComposerControlsMenu } from "./CompactComposerControlsMenu";
 import { ComposerControl } from "./ComposerControl";
 import {
@@ -14,6 +15,7 @@ import {
 import {
   type EnvironmentId,
   type ModelSelection,
+  type ProviderOptionSelection,
   type ProviderDriverKind,
   type ProviderInstanceId,
   type ProviderInteractionMode,
@@ -28,6 +30,13 @@ import {
 } from "./composerProviderState";
 import type { useComposerProviderModel } from "./useComposerProviderModel";
 import { resolveComposerControlsOwnership } from "./composerControlsOwnership";
+import {
+  ModelReasoningPicker,
+  modelReasoningMoreHiddenDescriptorIds,
+  shouldShowModelReasoningMoreOption,
+} from "./ModelReasoningPicker";
+import { buildModelReasoningGridSpec } from "./ModelReasoningGrid";
+import type { ProviderModelPicker } from "./ProviderModelPicker";
 
 /**
  * The composer footer controls: model picker, traits, mode controls and the overflow menu for
@@ -50,6 +59,10 @@ export function ComposerControlsBar(props: {
   reportedModelSelection: ChatComposerProps["reportedModelSelection"];
   promptUltrathink: PromptUltrathink;
   onPromptEdit: (edit: (prompt: string) => string) => void;
+  onModelReasoningOptionsChange: (
+    options: ReadonlyArray<ProviderOptionSelection> | undefined,
+  ) => void;
+  providerToggle: ComponentProps<typeof ProviderModelPicker>["providerToggle"] | null;
   planModeEnabled: boolean;
   planModeUiEnabled: boolean;
   effortDisplay: EffortDisplay;
@@ -100,6 +113,8 @@ export function ComposerControlsBar(props: {
     reportedModelSelection,
     promptUltrathink,
     onPromptEdit,
+    onModelReasoningOptionsChange,
+    providerToggle,
     planModeEnabled,
     planModeUiEnabled,
     interactionMode,
@@ -174,7 +189,18 @@ export function ComposerControlsBar(props: {
         }
       : {}),
   } satisfies Parameters<typeof renderProviderTraitsPicker>[0];
-  const providerTraitsPicker = renderProviderTraitsPicker(providerTraitsPickerInput);
+  const modelReasoningSpec =
+    multipleModelSelections === null
+      ? buildModelReasoningGridSpec({
+          provider: selectedProvider,
+          models: selectedProviderModels,
+          model: selectedModel,
+          modelOptions: composerModelOptions?.[selectedInstanceId],
+        })
+      : null;
+  const genericProviderTraitsPicker = modelReasoningSpec
+    ? null
+    : renderProviderTraitsPicker(providerTraitsPickerInput);
   const {
     accessDisplay,
     showModeBlock,
@@ -186,17 +212,69 @@ export function ComposerControlsBar(props: {
   } = resolveComposerControlsOwnership({
     matchesDefault: compatibleRuntimeMode === props.defaultRuntimeMode,
     permissionsShownInStrip: props.permissionsShownInStrip,
-    hasTraits: providerTraitsPicker !== null,
+    hasTraits: modelReasoningSpec !== null || genericProviderTraitsPicker !== null,
     planModeUiEnabled,
     collapsed: composerControlsCollapsed,
     measuredHiddenBlockCount,
   });
-  const restingProviderTraitsPicker = renderProviderTraitsPicker({
-    ...providerTraitsPickerInput,
-    size: composerControlsCollapsed ? "xs" : "sm",
-    hidden: composerControlsHidden || traitsHidden,
-    extraMenuOwnsModeShortcut: effortOwnsModeShortcut,
-  });
+  const providerModelReasoningPicker = modelReasoningSpec ? (
+    <ModelReasoningPicker
+      size={composerControlsCollapsed ? "xs" : "sm"}
+      effortDisplay={props.effortDisplay}
+      permissionsOwnsShortcut={effortOwnsModeShortcut}
+      spec={modelReasoningSpec}
+      promptUltrathink={promptUltrathink}
+      traitsMenuContent={renderProviderTraitsMenuContent({
+        provider: selectedProvider,
+        instanceId: selectedInstanceId,
+        ...(routeKind === "server" ? { threadRef: routeThreadRef } : {}),
+        ...(routeKind === "draft" && draftId ? { draftId } : {}),
+        model: selectedModel,
+        models: selectedProviderModels,
+        modelOptions: composerModelOptions?.[selectedInstanceId],
+        reportedModelSelection,
+        promptUltrathink,
+        onPromptEdit,
+        planModeEnabled,
+        hiddenDescriptorIds: modelReasoningMoreHiddenDescriptorIds(selectedProvider),
+        optionFilter: shouldShowModelReasoningMoreOption,
+      })}
+      provider={selectedProvider}
+      models={selectedProviderModels}
+      model={selectedModel}
+      modelOptions={composerModelOptions?.[selectedInstanceId]}
+      {...(!props.permissionsShownInStrip
+        ? {
+            permissions: {
+              runtimeMode: compatibleRuntimeMode,
+              runtimeModeOptions: compatibleRuntimeModeOptions,
+              onRuntimeModeChange: handleRuntimeModeChange,
+            },
+          }
+        : {})}
+      getModelDisabledReason={(nextModel) =>
+        selectedProvider === "claudeAgent" && promptUltrathink === "body"
+          ? "Reasoning is controlled by ultrathink in the prompt"
+          : getModelDisabledReason(selectedInstanceId, nextModel)
+      }
+      onModelOptionsChange={onModelReasoningOptionsChange}
+      onModelChange={(nextModel, nextOptions) => {
+        if (selectedProvider === "claudeAgent" && promptUltrathink !== "none") {
+          onPromptEdit((prompt) => prompt.replace(/^Ultrathink:\s*/i, ""));
+        }
+        onProviderModelSelect(selectedInstanceId, nextModel, nextOptions);
+      }}
+    />
+  ) : null;
+  const providerTraitsPicker = providerModelReasoningPicker ?? genericProviderTraitsPicker;
+  const restingProviderTraitsPicker =
+    providerModelReasoningPicker ??
+    renderProviderTraitsPicker({
+      ...providerTraitsPickerInput,
+      size: composerControlsCollapsed ? "xs" : "sm",
+      hidden: composerControlsHidden || traitsHidden,
+      extraMenuOwnsModeShortcut: effortOwnsModeShortcut,
+    });
   const restingBlockDefs = [
     ...(providerTraitsPicker
       ? [
@@ -235,6 +313,7 @@ export function ComposerControlsBar(props: {
       compact={false}
       isComposerOwned
       disabled={providerCatalogPending || isSendBusy}
+      {...(providerToggle ? { providerToggle } : {})}
       multipleModelsEnabled={multipleModelsEnabled}
       multipleModelSelections={multipleModelSelections}
       onMultipleModelSelectionsChange={onMultipleModelSelectionsChange}
@@ -256,11 +335,15 @@ export function ComposerControlsBar(props: {
       keybindings={keybindings}
       modelOptionsByInstance={modelOptionsByInstance}
       size={composerControlsCollapsed ? "xs" : "sm"}
-      triggerClassName={cn(
-        "pe-1",
-        TEXT_CONTROL_STATES,
-        composerControlsCollapsed ? "min-w-13 shrink text-xs!" : "min-w-13",
-      )}
+      triggerClassName={
+        providerToggle
+          ? cn("shrink-0 justify-center", composerControlsCollapsed ? "px-1" : "px-1.5")
+          : cn(
+              "pe-1",
+              TEXT_CONTROL_STATES,
+              composerControlsCollapsed ? "min-w-13 shrink text-xs!" : "min-w-13",
+            )
+      }
       terminalOpen={terminalOpen}
       open={modelPickerOpen}
       instanceIndicatorBackground={

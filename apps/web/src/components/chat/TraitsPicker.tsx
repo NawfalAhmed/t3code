@@ -327,6 +327,8 @@ interface TraitsMenuContentProps {
   extraMenuOwnsModeShortcut?: boolean;
   /** Extra tooltip text naming what else the menu holds. */
   extraMenuHint?: string;
+  hiddenDescriptorIds?: ReadonlyArray<string>;
+  optionFilter?: (descriptorId: string, optionId: string) => boolean;
 }
 
 export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
@@ -340,6 +342,8 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
   reportedModelSelection,
   allowPromptInjectedEffort = true,
   planModeEnabled,
+  hiddenDescriptorIds,
+  optionFilter,
   ...persistence
 }: TraitsMenuContentProps & TraitsPersistence) {
   const modelSelection =
@@ -371,14 +375,36 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
   });
   const {
     descriptors,
-    selectDescriptors,
-    booleanDescriptors,
     primarySelectDescriptor,
     ultrathinkPromptControlled,
     ultrathinkInBodyText,
     hasAnyControls,
     modelIsUnavailable,
   } = selected;
+  const hiddenDescriptorIdSet = new Set(hiddenDescriptorIds ?? []);
+  const visibleDescriptors = descriptors
+    .filter((descriptor) => !hiddenDescriptorIdSet.has(descriptor.id))
+    .map((descriptor) => {
+      if (descriptor.type !== "select" || !optionFilter) {
+        return descriptor;
+      }
+      return {
+        ...descriptor,
+        options: descriptor.options.filter((option) => optionFilter(descriptor.id, option.id)),
+      };
+    });
+  const visibleSelectDescriptors = visibleDescriptors.filter(
+    (descriptor): descriptor is Extract<ProviderOptionDescriptor, { type: "select" }> =>
+      descriptor.type === "select",
+  );
+  const visibleBooleanDescriptors = visibleDescriptors.filter(
+    (descriptor): descriptor is Extract<ProviderOptionDescriptor, { type: "boolean" }> =>
+      descriptor.type === "boolean",
+  );
+  const hasVisibleControls = modelIsUnavailable
+    ? visibleDescriptors.length > 0
+    : visibleSelectDescriptors.some((descriptor) => descriptor.options.length > 0) ||
+      visibleBooleanDescriptors.length > 0;
   const updateDescriptors = (nextDescriptors: ReadonlyArray<ProviderOptionDescriptor>) => {
     updateModelOptions(buildProviderOptionSelectionsFromDescriptors(nextDescriptors));
   };
@@ -396,14 +422,14 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
     if ("modelOptions" in change) updateModelOptions(change.modelOptions);
   };
 
-  if (!hasAnyControls) {
+  if (!hasAnyControls || !hasVisibleControls) {
     return null;
   }
 
   if (modelIsUnavailable) {
     return (
       <>
-        {descriptors.map((descriptor, index) => {
+        {visibleDescriptors.map((descriptor, index) => {
           const value = getProviderOptionCurrentLabel(
             descriptor,
             modelSelection,
@@ -428,7 +454,7 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
 
   return (
     <>
-      {selectDescriptors.map((descriptor, index) => {
+      {visibleSelectDescriptors.map((descriptor, index) => {
         const selectedValue =
           ultrathinkPromptControlled && descriptor.id === primarySelectDescriptor?.id
             ? "ultrathink"
@@ -477,12 +503,12 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
           </div>
         );
       })}
-      {booleanDescriptors.map((descriptor, index) => {
+      {visibleBooleanDescriptors.map((descriptor, index) => {
         const selectedValue = descriptor.currentValue === true ? "on" : "off";
 
         return (
           <div key={descriptor.id}>
-            {index > 0 || selectDescriptors.length > 0 ? <MenuDivider /> : null}
+            {index > 0 || visibleSelectDescriptors.length > 0 ? <MenuDivider /> : null}
             <MenuGroup>
               <div className="px-2 py-1.5 font-medium text-muted-foreground text-xs">
                 {descriptor.label}

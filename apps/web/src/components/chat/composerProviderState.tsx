@@ -68,6 +68,8 @@ type TraitsRenderInput = {
   extraMenuContent?: ReactNode;
   extraMenuOwnsModeShortcut?: boolean;
   extraMenuHint?: string;
+  hiddenDescriptorIds?: ReadonlyArray<string>;
+  optionFilter?: (descriptorId: string, optionId: string) => boolean;
 };
 
 export function getComposerPromptInjectionState(prompt: string): ComposerPromptInjectionState {
@@ -241,6 +243,8 @@ function renderTraitsControl(
     extraMenuContent,
     extraMenuOwnsModeShortcut,
     extraMenuHint,
+    hiddenDescriptorIds,
+    optionFilter,
   } = input;
   const hasTarget = threadRef !== undefined || draftId !== undefined;
   const { selections: resolvedModelOptions } = resolveComposerOptionSelections(
@@ -284,6 +288,8 @@ function renderTraitsControl(
       {...(extraMenuContent ? { extraMenuContent } : {})}
       {...(extraMenuOwnsModeShortcut ? { extraMenuOwnsModeShortcut } : {})}
       {...(extraMenuHint ? { extraMenuHint } : {})}
+      {...(hiddenDescriptorIds ? { hiddenDescriptorIds } : {})}
+      {...(optionFilter ? { optionFilter } : {})}
     />
   );
 }

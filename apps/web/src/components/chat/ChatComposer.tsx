@@ -16,6 +16,7 @@ import {
   useQuestionAttachmentPreparation,
 } from "../../questionAttachments";
 import type {
+  ProviderOptionSelection,
   KeybindingCommand,
   AssistantCitation,
   ChatAttachment as ContractChatAttachment,
@@ -277,6 +278,11 @@ import {
 } from "./preparingComposerImages";
 import { ComposerControlsBar } from "./ComposerControlsBar";
 import { composerCommandKeyHandler } from "./composerCommandKey";
+import {
+  resolveProviderToggleEntries,
+  resolveProviderToggleTarget,
+  shouldUseProviderToggle,
+} from "./providerToggle";
 
 function consumePasteAsTextShortcut(deadline: { current: number }): boolean {
   const armed = Date.now() <= deadline.current;
@@ -479,7 +485,12 @@ export interface ChatComposerProps {
   onProviderModelSelect: (
     instanceId: ProviderInstanceId,
     model: string,
-    options?: { focusComposer?: boolean },
+    options?:
+      | ReadonlyArray<ProviderOptionSelection>
+      | {
+          focusComposer?: boolean;
+          modelOptions?: ReadonlyArray<ProviderOptionSelection> | undefined;
+        },
   ) => void;
   onOpenProviderSetup: (instanceId: ProviderInstanceId) => void;
   getModelDisabledReason: (instanceId: ProviderInstanceId, model: string) => string | null;
@@ -966,6 +977,46 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       ? selectedModelForPicker
       : (normalizeModelSlug(selectedModelForPicker, selectedProvider) ?? selectedModelForPicker);
   })();
+
+  // Codex <-> Claude is the most common model change, so the trigger flips provider
+  // directly and keeps the full picker behind a meta/ctrl-click. Started threads switch
+  // through a provider handoff; one that cannot hand off is locked to its provider icon.
+  const providerToggleEntries =
+    multipleModelSelections !== null ||
+    providerCatalogPending ||
+    !shouldUseProviderToggle(selectedProvider, selectedModelForPickerWithCustomFallback)
+      ? null
+      : resolveProviderToggleEntries(providerInstanceEntries, selectedInstanceId, {
+          locked: lockedProvider !== null,
+        });
+  const onProviderToggle = ({ focusComposer = true } = {}) => {
+    if (!providerToggleEntries) return;
+    const target = resolveProviderToggleTarget({
+      entries: providerToggleEntries,
+      selectedInstanceId,
+      draftSelections: composerDraft.modelSelectionByProvider,
+      stickySelections: useComposerDraftStore.getState().stickyModelSelectionByProvider,
+    });
+    if (!target) return;
+    onProviderModelSelect(target.instanceId, target.model, {
+      modelOptions: target.options,
+      focusComposer,
+    });
+  };
+  const onProviderToggleStable = useStableCallback(onProviderToggle);
+  const setComposerDraftProviderModelOptions = useComposerDraftStore(
+    (store) => store.setProviderModelOptions,
+  );
+  const onModelReasoningOptionsChange = (
+    nextOptions: ReadonlyArray<ProviderOptionSelection> | undefined,
+  ) => {
+    setComposerDraftProviderModelOptions(composerDraftTarget, selectedProvider, nextOptions, {
+      instanceId: selectedInstanceId,
+      model: selectedModel,
+      persistSticky: true,
+    });
+  };
+  const onModelReasoningOptionsChangeStable = useStableCallback(onModelReasoningOptionsChange);
 
   const activeThreadModelDisplayName = resolveContextWindowModelDisplayName(
     activeThreadModelSelection,
@@ -2255,6 +2306,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // The collapsed mobile web composer keeps a second controls row inside the card.
   const showInlineRestingControls = isComposerCollapsedMobile;
   const composerControlsHidden = showInlineRestingControls && !restingControlsVisible;
+  const composerProviderToggle =
+    providerToggleEntries && !composerControlsCollapsed
+      ? {
+          entries: providerToggleEntries,
+          onToggle: onProviderToggleStable,
+        }
+      : null;
   if (composerControlsHidden && isComposerModelPickerOpen) {
     setIsComposerModelPickerOpen(false);
   }
@@ -2301,6 +2359,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       reportedModelSelection={reportedModelSelection}
       promptUltrathink={promptUltrathink}
       onPromptEdit={editPromptFromTraitsStable}
+      onModelReasoningOptionsChange={onModelReasoningOptionsChangeStable}
+      providerToggle={composerProviderToggle}
       planModeEnabled={settings.planModeEnabled}
       planModeUiEnabled={planModeUiEnabled}
       interactionMode={interactionMode}
@@ -2309,9 +2369,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       compatibleRuntimeModeOptions={compatibleRuntimeModeOptions}
       toggleInteractionMode={toggleInteractionMode}
       handleRuntimeModeChange={handleRuntimeModeChange}
+      permissionsShownInStrip={props.permissionsShownInStrip ?? false}
       composerControlsCollapsed={composerControlsCollapsed}
       effortDisplay={settings.effortDisplay}
-      permissionsShownInStrip={props.permissionsShownInStrip ?? false}
       composerControlsHidden={composerControlsHidden}
       restingHiddenBlockCount={restingHiddenBlockCount}
       iconOnlyBlockCount={iconOnlyBlockCount}
