@@ -10,6 +10,7 @@ import * as Duration from "effect/Duration";
 import { describe, expect, it } from "vite-plus/test";
 import {
   backgroundActivitySharedPolicySettings,
+  buildGeneralSettingsRestorePatch,
   buildProviderInstanceUpdatePatch,
   formatDiagnosticsDescription,
   getChangedBrowserSettingLabels,
@@ -148,6 +149,12 @@ describe("project grouping toggle", () => {
   it("restores repository path grouping when the toggle is cycled", () => {
     expect(projectGroupingModeFromToggle(false, "repository_path")).toBe("separate");
     expect(projectGroupingModeFromToggle(true, "repository_path")).toBe("repository_path");
+  });
+});
+
+describe("buildGeneralSettingsRestorePatch", () => {
+  it("restore_desktopNotifications_returnsDisabled", () => {
+    expect(buildGeneralSettingsRestorePatch().desktopNotificationsEnabled).toBe(false);
   });
 });
 

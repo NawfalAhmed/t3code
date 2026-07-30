@@ -33,12 +33,14 @@ export interface EnvironmentShellState {
   readonly snapshot: Option.Option<OrchestrationShellSnapshot>;
   readonly status: EnvironmentShellStatus;
   readonly error: Option.Option<string>;
+  readonly baselineRevision: number;
 }
 
 const EMPTY_SHELL_STATE: EnvironmentShellState = {
   snapshot: Option.none(),
   status: "empty",
   error: Option.none(),
+  baselineRevision: 0,
 };
 
 function shellStatusForSnapshot(
@@ -70,6 +72,7 @@ export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")
     snapshot: cachedSnapshot,
     status: shellStatusForSnapshot(cachedSnapshot),
     error: Option.none(),
+    baselineRevision: 0,
   });
   const awaitingCompletion = yield* Ref.make(false);
   const lastAuthoritativeSession = yield* Ref.make<RpcSession | null>(null);
@@ -167,6 +170,7 @@ export const makeEnvironmentShellState = Effect.fn("EnvironmentShellState.make")
       receivedSnapshot ||= item.kind === "snapshot";
       next = {
         snapshot: Option.some(nextSnapshot),
+        baselineRevision: item.kind === "snapshot" ? next.baselineRevision + 1 : next.baselineRevision,
         status: waiting ? "synchronizing" : "live",
         error: Option.none(),
       };

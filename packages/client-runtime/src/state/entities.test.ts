@@ -147,6 +147,7 @@ function shellState(snapshot: OrchestrationShellSnapshot): EnvironmentShellState
     snapshot: Option.some(snapshot),
     status: "live",
     error: Option.none(),
+    baselineRevision: 1,
   };
 }
 

@@ -41,6 +41,10 @@ export const SET_SNAP_SHOT_ANIMATION_DESTINATION_CHANNEL =
   "desktop:set-snap-shot-animation-destination";
 export const DISMISS_SNAP_SHOT_ANIMATION_CHANNEL = "desktop:dismiss-snap-shot-animation";
 export const ACKNOWLEDGE_SNAP_SHOT_CHANNEL = "desktop:acknowledge-snap-shot";
+export const SHOW_DESKTOP_NOTIFICATION_CHANNEL = "desktop:show-notification";
+export const CONSUME_DESKTOP_NOTIFICATION_TARGET_CHANNEL = "desktop:consume-notification-target";
+export const DESKTOP_NOTIFICATION_TARGET_AVAILABLE_CHANNEL =
+  "desktop:notification-target-available";
 export const GET_CONNECTION_CATALOG_CHANNEL = "desktop:get-connection-catalog";
 export const SET_CONNECTION_CATALOG_CHANNEL = "desktop:set-connection-catalog";
 export const CLEAR_CONNECTION_CATALOG_CHANNEL = "desktop:clear-connection-catalog";

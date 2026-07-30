@@ -552,6 +552,10 @@ export function useSettingsRestore(onRestored?: () => void) {
       DEFAULT_UNIFIED_SETTINGS.enableLegacyTokenStreaming
         ? ["Stream token by token"]
         : []),
+      ...(settings.desktopNotificationsEnabled !==
+      DEFAULT_UNIFIED_SETTINGS.desktopNotificationsEnabled
+        ? ["Desktop notifications"]
+        : []),
       ...(settings.enableProviderUpdateChecks !==
       DEFAULT_UNIFIED_SETTINGS.enableProviderUpdateChecks
         ? ["Provider update checks"]
@@ -622,6 +626,8 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.glassOpacity,
       settings.panelAnimationDurationMs,
       settings.enableLegacyTokenStreaming,
+      settings.desktopNotificationsEnabled,
+      settings.automaticGitFetchInterval,
       settings.enableProviderUpdateChecks,
       settings.continueThreadsAfterServerUpdate,
       settings.sidebarAutoSettleAfterDays,
@@ -709,6 +715,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       showSkillsInSlashMenu: DEFAULT_UNIFIED_SETTINGS.showSkillsInSlashMenu,
       composerCollapseOnScroll: DEFAULT_UNIFIED_SETTINGS.composerCollapseOnScroll,
       contextWindowMeterEnabled: DEFAULT_UNIFIED_SETTINGS.contextWindowMeterEnabled,
+      desktopNotificationsEnabled: DEFAULT_UNIFIED_SETTINGS.desktopNotificationsEnabled,
       environmentIdentificationMode: DEFAULT_UNIFIED_SETTINGS.environmentIdentificationMode,
       glassOpacity: DEFAULT_UNIFIED_SETTINGS.glassOpacity,
       panelAnimationDurationMs: DEFAULT_UNIFIED_SETTINGS.panelAnimationDurationMs,
@@ -2397,6 +2404,30 @@ export function GeneralSettingsPanel() {
             />
           }
         />
+
+        {isElectron ? (
+          <SettingsRow
+            title="Desktop notifications"
+            description="Show a private system notification when any thread completes a turn or needs attention, including the thread you're viewing."
+            resetAction={
+              settings.desktopNotificationsEnabled ? (
+                <SettingResetButton
+                  label="desktop notifications"
+                  onClick={() => updateSettings({ desktopNotificationsEnabled: false })}
+                />
+              ) : null
+            }
+            control={
+              <Switch
+                checked={settings.desktopNotificationsEnabled}
+                onCheckedChange={(checked) =>
+                  updateSettings({ desktopNotificationsEnabled: Boolean(checked) })
+                }
+                aria-label="Enable desktop notifications"
+              />
+            }
+          />
+        ) : null}
 
         <SettingsRow
           {...searchableSetting("continue-threads-after-server-update")}

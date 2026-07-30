@@ -13,6 +13,7 @@ import { type DesktopSnapShotEvent, DEFAULT_CLIENT_SETTINGS } from "@t3tools/con
 import * as DesktopAssets from "../app/DesktopAssets.ts";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import { makeComponentLogger } from "../app/DesktopObservability.ts";
+import * as DesktopState from "../app/DesktopState.ts";
 import * as ElectronMenu from "../electron/ElectronMenu.ts";
 import { getDesktopUrl } from "../electron/ElectronProtocol.ts";
 import * as ElectronShell from "../electron/ElectronShell.ts";
@@ -59,9 +60,10 @@ type WindowTitleBarOptions = Pick<
 
 type DesktopWindowRuntimeServices =
   | DesktopEnvironment.DesktopEnvironment
+  | DesktopClientSettings.DesktopClientSettings
+  | DesktopState.DesktopState
   | DesktopAssets.DesktopAssets
   | DesktopAppSettings.DesktopAppSettings
-  | DesktopClientSettings.DesktopClientSettings
   | ElectronApp.ElectronApp
   | ElectronMenu.ElectronMenu
   | ElectronShell.ElectronShell
@@ -118,6 +120,11 @@ export class DesktopWindow extends Context.Service<
     // guest page instead of the app UI. The menu routes here to always target
     // the main window.
     readonly zoomMain: (direction: MainWindowZoomDirection) => Effect.Effect<void>;
+    readonly dispatchRendererEvent: (
+      channel: string,
+      payload?: unknown,
+      options?: { readonly reveal?: boolean },
+    ) => Effect.Effect<void, DesktopWindowError>;
     readonly syncAppearance: Effect.Effect<void>;
   }
 >()("@t3tools/desktop/window/DesktopWindow") {}
@@ -234,6 +241,14 @@ export function concealPendingQuitWindow(
   window.setOpacity(0);
 }
 
+export function shouldRetainMainWindowOnClose(input: {
+  readonly platform: NodeJS.Platform;
+  readonly notificationsEnabled: boolean;
+  readonly isQuitting: boolean;
+}): boolean {
+  return input.platform === "darwin" && input.notificationsEnabled && !input.isQuitting;
+}
+
 function getWindowTitleBarOptions(
   shouldUseDarkColors: boolean,
   platform: NodeJS.Platform,
@@ -293,6 +308,8 @@ function bindFirstRevealTrigger(
 /** @public Service construction is part of the canonical Effect module API. */
 export const make = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
+  const clientSettings = yield* DesktopClientSettings.DesktopClientSettings;
+  const desktopState = yield* DesktopState.DesktopState;
   const assets = yield* DesktopAssets.DesktopAssets;
   const electronMenu = yield* ElectronMenu.ElectronMenu;
   const electronShell = yield* ElectronShell.ElectronShell;
@@ -300,7 +317,6 @@ export const make = Effect.gen(function* () {
   const electronWindow = yield* ElectronWindow.ElectronWindow;
   const previewManager = yield* PreviewManager.PreviewManager;
   const desktopSettings = yield* DesktopAppSettings.DesktopAppSettings;
-  const clientSettings = yield* DesktopClientSettings.DesktopClientSettings;
   const electronApp = yield* ElectronApp.ElectronApp;
   // Window-side latch for the primary backend's readiness. Set by
   // handleBackendReady (driven by the pool's onReady callback), cleared
@@ -315,6 +331,22 @@ export const make = Effect.gen(function* () {
   const runFork = Effect.runForkWith(context);
   const runPromise = Effect.runPromiseWith(context);
   let flushMainWindowBounds: Effect.Effect<void> = Effect.void;
+
+  const closeMainWindow = Effect.fn("desktop.window.closeMainWindow")(function* (
+    window: Electron.BrowserWindow,
+  ) {
+    const settings = yield* clientSettings.get;
+    const shouldRetain = shouldRetainMainWindowOnClose({
+      platform: environment.platform,
+      notificationsEnabled: Option.exists(settings, (value) => value.desktopNotificationsEnabled),
+      isQuitting: yield* Ref.get(desktopState.quitting),
+    });
+    if (shouldRetain) {
+      window.hide();
+      return;
+    }
+    window.destroy();
+  });
 
   const dismissConnectingSplash = Effect.gen(function* () {
     const splash = yield* Ref.getAndSet(splashWindowRef, Option.none());
@@ -402,6 +434,15 @@ export const make = Effect.gen(function* () {
 
     if (environment.platform === "darwin") {
       window.setAutoHideCursor(false);
+      let isClosePending = false;
+      window.on("close", (event) => {
+        event.preventDefault();
+        if (isClosePending) return;
+        isClosePending = true;
+        void runPromise(closeMainWindow(window)).finally(() => {
+          isClosePending = false;
+        });
+      });
     }
     let boundsPersistFiber: Fiber.Fiber<void, never> | undefined;
     let pendingBoundsPersistFiber: Fiber.Fiber<void, never> | undefined;
@@ -894,7 +935,7 @@ export const make = Effect.gen(function* () {
 
   const dispatchRendererEvent = Effect.fn("desktop.window.dispatchRendererEvent")(function* (
     channel: string,
-    payload: unknown,
+    payload: unknown = undefined,
     { reveal = true }: { readonly reveal?: boolean } = {},
   ) {
     const existingWindow = yield* reveal ? focusedMainWindow : electronWindow.main;
@@ -989,6 +1030,7 @@ export const make = Effect.gen(function* () {
       // own zoom, so put each guest back where the preview left it.
       yield* previewManager.reapplyZoom();
     }),
+    dispatchRendererEvent,
     syncAppearance: Effect.gen(function* () {
       const shouldUseDarkColors = yield* electronTheme.shouldUseDarkColors;
       yield* electronWindow.syncAllAppearance((window) =>

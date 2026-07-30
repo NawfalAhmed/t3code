@@ -97,6 +97,7 @@ function makeDesktopWindowLayer(
     dispatchMenuAction: () => Effect.void,
     dispatchSnapShotEvent: () => Effect.void,
     zoomMain: () => Effect.void,
+    dispatchRendererEvent: () => Effect.void,
     syncAppearance: Effect.void,
   });
 }
