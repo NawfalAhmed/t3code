@@ -58,6 +58,8 @@ type TraitsRenderInput = {
   triggerVariant?: VariantProps<typeof buttonVariants>["variant"];
   triggerClassName?: string;
   isComposerOwned?: boolean;
+  hiddenDescriptorIds?: ReadonlyArray<string>;
+  optionFilter?: (descriptorId: string, optionId: string) => boolean;
 };
 
 export function getComposerPromptInjectionState(prompt: string): ComposerPromptInjectionState {
@@ -181,6 +183,8 @@ function renderTraitsControl(
     triggerVariant,
     triggerClassName,
     isComposerOwned,
+    hiddenDescriptorIds,
+    optionFilter,
   } = input;
   const hasTarget = threadRef !== undefined || draftId !== undefined;
   const { selections: resolvedModelOptions } = resolveComposerOptionSelections(
@@ -220,6 +224,8 @@ function renderTraitsControl(
       {...(triggerVariant !== undefined ? { triggerVariant } : {})}
       {...(triggerClassName !== undefined ? { triggerClassName } : {})}
       {...(isComposerOwned ? { isComposerOwned } : {})}
+      {...(hiddenDescriptorIds ? { hiddenDescriptorIds } : {})}
+      {...(optionFilter ? { optionFilter } : {})}
     />
   );
 }
