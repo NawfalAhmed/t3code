@@ -482,6 +482,15 @@ describe("ClientSettings pull request merge methods", () => {
   });
 });
 
+describe("ClientSettings new project button", () => {
+  it("shows the button by default and accepts the hide preference", () => {
+    expect(decodeClientSettings({}).hideNewProjectButton).toBe(false);
+    expect(decodeClientSettingsPatch({ hideNewProjectButton: true }).hideNewProjectButton).toBe(
+      true,
+    );
+  });
+});
+
 describe("ServerSettings.providerInstances (slice-2 invariant)", () => {
   it("defaults text generation to Luna at low reasoning effort", () => {
     expect(DEFAULT_SERVER_SETTINGS.textGenerationModelSelection).toEqual({

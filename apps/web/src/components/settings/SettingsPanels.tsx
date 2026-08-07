@@ -523,6 +523,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       DEFAULT_UNIFIED_SETTINGS.sidebarProjectGroupingMode
         ? ["Project Grouping"]
         : []),
+      ...(settings.hideNewProjectButton !== DEFAULT_UNIFIED_SETTINGS.hideNewProjectButton
+        ? ["Hide new project button"]
+        : []),
       ...(settings.sidebarAutoSettleAfterDays !==
       DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleAfterDays
         ? ["Auto-settle inactive threads"]
@@ -634,6 +637,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.sidebarAutoSettleOnMerge,
       settings.sidebarProjectGroupingMode,
       settings.sidebarThreadPreviewCount,
+      settings.hideNewProjectButton,
       settings.showSkillsInSlashMenu,
       settings.timestampFormat,
       settings.wordWrap,
@@ -721,6 +725,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       panelAnimationDurationMs: DEFAULT_UNIFIED_SETTINGS.panelAnimationDurationMs,
       sidebarThreadPreviewCount: DEFAULT_UNIFIED_SETTINGS.sidebarThreadPreviewCount,
       sidebarProjectGroupingMode: DEFAULT_UNIFIED_SETTINGS.sidebarProjectGroupingMode,
+      hideNewProjectButton: DEFAULT_UNIFIED_SETTINGS.hideNewProjectButton,
       sidebarAutoSettleAfterDays: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleAfterDays,
       sidebarAutoSettleOnMerge: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleOnMerge,
       enableLegacyTokenStreaming: DEFAULT_UNIFIED_SETTINGS.enableLegacyTokenStreaming,
@@ -2115,6 +2120,32 @@ export function GeneralSettingsPanel() {
                 });
               }}
               aria-label="Project grouping"
+            />
+          }
+        />
+
+        <SettingsRow
+          {...searchableSetting("hide-new-project-button")}
+          description="Hide the folder-plus button beside the project selector."
+          resetAction={
+            settings.hideNewProjectButton ? (
+              <SettingResetButton
+                label="hide new project button"
+                onClick={() =>
+                  updateSettings({
+                    hideNewProjectButton: DEFAULT_UNIFIED_SETTINGS.hideNewProjectButton,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.hideNewProjectButton}
+              onCheckedChange={(checked) =>
+                updateSettings({ hideNewProjectButton: Boolean(checked) })
+              }
+              aria-label="Hide new project button"
             />
           }
         />

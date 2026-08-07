@@ -256,4 +256,11 @@ describe("searchSettings", () => {
       targetId: "browser-profiles",
     });
   });
+
+  it("routes the new project button preference to General", () => {
+    expect(searchSettings("hide new project button")[0]).toMatchObject({
+      id: "hide-new-project-button",
+      to: "/settings/general",
+    });
+  });
 });
