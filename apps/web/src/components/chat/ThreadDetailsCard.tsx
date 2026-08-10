@@ -15,6 +15,7 @@ import { useChatCanvas } from "./ChatCanvasContext";
 import {
   THREAD_DETAILS_CARD_GAP,
   resolveThreadDetailsCardDensity,
+  resolveThreadDetailsFooterLayout,
 } from "./threadDetailsCardLayout";
 import { observeResize } from "../../lib/observeResize";
 import { requestWorkspaceFocus } from "../../lib/workspaceFocus";
@@ -25,6 +26,7 @@ export function ThreadDetailsCard({
   handle,
   contentKey,
   onContextMenu,
+  footer,
   children,
 }: {
   threadRef: ScopedThreadRef;
@@ -33,6 +35,8 @@ export function ThreadDetailsCard({
   /** Changes when the set of rendered items changes, so cached heights are measured again. */
   contentKey: string;
   onContextMenu?: MouseEventHandler<HTMLDivElement>;
+  /** A second card beside the composer, below the inline card; not shown as a popover. */
+  footer?: ReactNode;
   children: (density: "full" | "compact" | "essential") => ReactNode;
 }) {
   const detailsArea = workspaceAreaProps("details", 3, "Thread details");
@@ -54,7 +58,22 @@ export function ThreadDetailsCard({
   });
   const contentHeights =
     measurements.key === measurementKey ? measurements.heights : { full: 0, compact: 0 };
-  const height = placement?.height ?? Math.max(0, (canvas?.container.height ?? 0) - 52);
+  const [footerElement, setFooterElement] = useState<HTMLDivElement | null>(null);
+  const footerHeight = canvas?.detailsFooterHeight ?? 0;
+  const measureDetailsFooter = canvas?.measureDetailsFooter;
+  const footerLayout =
+    placement && footer
+      ? resolveThreadDetailsFooterLayout({
+          placement,
+          footerHeight: footerElement ? footerHeight : 0,
+          composerBottom: canvas?.composerBottom ?? null,
+          frame: canvas?.layout.frame ?? null,
+        })
+      : null;
+  const height =
+    footerLayout?.cardHeight ??
+    placement?.height ??
+    Math.max(0, (canvas?.container.height ?? 0) - 52);
   const density = resolveThreadDetailsCardDensity(height, contentHeights);
   const measureDetailsCard = canvas?.measureDetailsCard;
   const cardWidth = preferredPlacement?.width;
@@ -112,6 +131,17 @@ export function ThreadDetailsCard({
     environmentId,
     threadId,
   ]);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- measures the footer's DOM height via ResizeObserver so the card and preview leave room for it
+  useLayoutEffect(() => {
+    if (!footerElement || !measureDetailsFooter) return;
+    const measure = () => measureDetailsFooter(footerElement.offsetHeight);
+    measure();
+    const stopObserving = observeResize(footerElement, measure);
+    return () => {
+      stopObserving();
+      measureDetailsFooter(0);
+    };
+  }, [footerElement, measureDetailsFooter]);
   const card = (
     <div
       className={cn(
@@ -166,6 +196,22 @@ export function ThreadDetailsCard({
         >
           {card}
         </aside>
+      ) : null}
+      {placement && inlineOpen && footerLayout ? (
+        <div
+          ref={setFooterElement}
+          className={cn("absolute z-20", !footerLayout.visible && "invisible")}
+          style={{
+            right: placement.right,
+            bottom: (canvas?.container.height ?? 0) - footerLayout.bottom,
+            width: placement.width,
+          }}
+        >
+          {/* min-h-36 is the resting composer input plus its context strip, so the two read as a pair. */}
+          <div className="isolate flex min-h-36 flex-col overflow-hidden rounded-2xl border border-foreground/10 bg-popover/40 backdrop-blur-(--glass-blur) empty:hidden">
+            {footer}
+          </div>
+        </div>
       ) : null}
       {/* Rendered in both modes: base-ui keeps a popup that unmounts mid-open
           mounted, because its exit animation never finishes. Staying in the tree

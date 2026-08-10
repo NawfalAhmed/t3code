@@ -137,9 +137,12 @@ function Panel({ fixture }: { fixture: ReturnType<typeof setup> }) {
         previewKey: null,
         registerTimeline: noop,
         measureDetailsCard: noop,
+        detailsFooterHeight: 0,
+        measureDetailsFooter: noop,
         detailsCardTopInset: 0,
         preferredDetailsCard: placement,
         detailsCardPlacement: placement,
+        composerBottom: null,
       }}
     >
       <ThreadDetailsPanel

@@ -10,6 +10,7 @@ import {
   type UsageSummaryInput,
 } from "@t3tools/contracts";
 import { CircleAlertIcon, ChevronDownIcon, InfoIcon, SlidersHorizontalIcon } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { settlePromise } from "@t3tools/client-runtime/state/runtime";
 import * as AsyncResult from "effect/reactivity/AsyncResult";
@@ -107,7 +108,7 @@ import {
   type UsagePagePreferences,
 } from "./usagePagePreferences";
 
-function isUsageMetric(value: string | null | undefined): value is UsageMetric {
+export function isUsageMetric(value: unknown): value is UsageMetric {
   return METRIC_OPTIONS.some((option) => option.value === value);
 }
 
@@ -175,6 +176,7 @@ function UsageModelDialogHost({
 }
 
 export function UsagePage() {
+  const navigate = useNavigate();
   const [preferences, setPreferences] = useState(readUsagePagePreferences);
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const hour12 = usePrimarySettings((settings) => resolveHour12(settings.timestampFormat));
@@ -194,7 +196,9 @@ export function UsagePage() {
       preferences.windowDays === 1 ? "hour" : "day",
     ),
   }));
-  const metric = preferences.metric;
+  // A routed metric wins over the stored one, so a link that promises limits lands on limits.
+  const routedMetric = useSearch({ from: "/_chat/usage", select: (search) => search.metric });
+  const metric = routedMetric ?? preferences.metric;
   const showingLimits = metric === "limits";
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [limitsNow, setLimitsNow] = useState(() => Date.now());
@@ -246,6 +250,10 @@ export function UsagePage() {
   const selectMetric = (nextMetric: UsageMetric) => {
     if (nextMetric === "limits") setLimitsNow(Date.now());
     updatePreferences({ metric: nextMetric });
+    // Only when the URL pinned one, so a plain visit keeps its address bar clean.
+    if (routedMetric !== undefined && routedMetric !== nextMetric) {
+      void navigate({ to: "/usage", search: { metric: nextMetric }, replace: true });
+    }
   };
   const refreshLimits = (automatic = false) =>
     // Settled so the timestamp still advances when a refresh throws.
