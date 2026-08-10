@@ -2096,6 +2096,7 @@ export default function ChatView(props: ChatViewProps) {
       resolveChatCanvasModel({
         measurements: state.measurements,
         detailsCardMeasurement: state.detailsCardMeasurement,
+        detailsFooterHeight: state.detailsFooterHeight,
         threadRef: activeThreadRef,
         preview: canvasPreview,
         detailsCardInlineOpen: threadPanelInlineOpen,

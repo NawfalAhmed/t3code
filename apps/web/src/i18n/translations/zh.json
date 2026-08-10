@@ -13007,5 +13007,13 @@
   "b242b18b1e0292fd": "More options",
   "42a72a17c2a4533e": "Switch to {provider} · {key}-click for all models",
   "9baf82f709b023d4": "Switch to {provider}",
-  "e96ad788c35b63d3": "Existing Worktree ({branch})"
+  "e96ad788c35b63d3": "Existing Worktree ({branch})",
+  "4a7bb5db3ac1a6ca": "5hr",
+  "0fea261616d142a5": "Week",
+  "04cbd627f2f78804": "Month",
+  "bc1388339eb289f9": "now",
+  "c13842e156133e16": "{window} {percent}% left",
+  "12341925a4199132": "{window} {percent}% left, resets {reset}",
+  "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
+  "cb0852f8e19d3e46": "{provider}: {windows}"
 }

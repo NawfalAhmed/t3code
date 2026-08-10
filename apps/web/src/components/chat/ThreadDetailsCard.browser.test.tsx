@@ -67,9 +67,12 @@ function Card({
           previewKey: null,
           registerTimeline: () => {},
           measureDetailsCard: () => {},
+          detailsFooterHeight: 0,
+          measureDetailsFooter: () => {},
           detailsCardTopInset: 0,
           preferredDetailsCard: placement,
           detailsCardPlacement: inline ? placement : null,
+          composerBottom: null,
         }}
       >
         <ThreadDetailsCard

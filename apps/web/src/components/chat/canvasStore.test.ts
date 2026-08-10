@@ -20,6 +20,7 @@ const measurements = (width: number, height = 900): ChatCanvasMeasurements => ({
   maxHtmlPreviewWidth: 768,
   minChatWidth: 640,
   composerHeight: 180,
+  composerBottom: null,
   timelineGutter: 0,
   findBar: null,
 });
