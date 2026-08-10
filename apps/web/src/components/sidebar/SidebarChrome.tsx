@@ -26,6 +26,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
 import { isSidebarUtilityPage, useNavigateToMainApp } from "./mainAppLocation";
 import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
+import { SidebarUsageItem } from "./SidebarUsageItem";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
@@ -181,11 +182,14 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     void navigate({ to: "/settings" });
   };
 
-  const handleUsageClick = () => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-    void navigate({ to: "/usage" });
+  // Each entry point pins its view rather than reopening wherever the page was left.
+  const handleCostsClick = () => {
+    closeMobileSidebar();
+    void navigate({ to: "/usage", search: { metric: "cost" } });
+  };
+  const handleLimitsClick = () => {
+    closeMobileSidebar();
+    void navigate({ to: "/usage", search: { metric: "limits" } });
   };
 
   const handleBackClick = () => {
@@ -194,38 +198,42 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   };
 
   return (
-    <SidebarMenu className="flex-row items-center">
-      {isOnUtilityPage ? (
-        <SidebarMenuItem className="min-w-0 flex-1">
-          <SidebarMenuButton onClick={handleBackClick}>
-            <ArrowLeftIcon />
-            <span>Back</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ) : (
-        <>
-          <SidebarUtilityItem
-            icon={<SettingsIcon />}
-            label="Settings"
-            onClick={handleSettingsClick}
-          />
-          {pullRequestsSupported ? (
+    <>
+      {/* Quota is worth knowing wherever you are, so this outlives the Back row. */}
+      <SidebarUsageItem onSelect={handleLimitsClick} />
+      <SidebarMenu className="flex-row items-center">
+        {isOnUtilityPage ? (
+          <SidebarMenuItem className="min-w-0 flex-1">
+            <SidebarMenuButton onClick={handleBackClick}>
+              <ArrowLeftIcon />
+              <span>Back</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        ) : (
+          <>
             <SidebarUtilityItem
-              icon={<PullRequestGlyph.pullRequest />}
-              label="Pull requests"
-              onClick={handlePullRequestsClick}
+              icon={<SettingsIcon />}
+              label="Settings"
+              onClick={handleSettingsClick}
             />
-          ) : null}
-          <SidebarUtilityItem
-            icon={<ChartNoAxesColumnIcon />}
-            label="Usage"
-            onClick={handleUsageClick}
-          />
-        </>
-      )}
-      <SidebarThreadUndoNotice />
-      <SidebarUpdatePill />
-    </SidebarMenu>
+            {pullRequestsSupported ? (
+              <SidebarUtilityItem
+                icon={<PullRequestGlyph.pullRequest />}
+                label="Pull requests"
+                onClick={handlePullRequestsClick}
+              />
+            ) : null}
+            <SidebarUtilityItem
+              icon={<ChartNoAxesColumnIcon />}
+              label="Usage"
+              onClick={handleCostsClick}
+            />
+          </>
+        )}
+        <SidebarThreadUndoNotice />
+        <SidebarUpdatePill />
+      </SidebarMenu>
+    </>
   );
 });
 
