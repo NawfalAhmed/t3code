@@ -30,6 +30,7 @@ export function resolveChatCanvasLayout({
   composerHeight = 0,
   detailsCard = null,
   findBar = null,
+  detailsFooter = null,
 }: {
   container: PreviewMiniPlayerSize;
   preview: ChatCanvasPreview | null;
@@ -39,7 +40,15 @@ export function resolveChatCanvasLayout({
   composerHeight?: number;
   detailsCard?: PreviewMiniPlayerObstacles["detailsCard"];
   findBar?: PreviewMiniPlayerObstacles["detailsCard"];
+  /** The card docked beside the composer; an unplaced preview rests above it. */
+  detailsFooter?: PreviewMiniPlayerObstacles["detailsFooter"];
 }) {
+  const restingY = (player: PreviewMiniPlayerFrame) =>
+    (detailsFooter && player.x < detailsFooter.right && player.x + player.width > detailsFooter.left
+      ? detailsFooter.top
+      : container.height) -
+    player.height -
+    GAP;
   const centeredWidth = Math.max(0, Math.min(maxChatWidth, container.width - padding * 2));
   const laneRight = detailsCard
     ? detailsCard.left - DETAILS_CARD_CLEARANCE
@@ -63,7 +72,7 @@ export function resolveChatCanvasLayout({
       container.width <= padding + minChatWidth + frame.width + GAP * 2
         ? GAP
         : padding + minChatWidth + GAP;
-    if (preview.position === null) frame = { ...frame, y: container.height - frame.height - GAP };
+    if (preview.position === null) frame = { ...frame, y: restingY(frame) };
     if (preview.lastInteraction === "resize" && composerHeight > 0) {
       const laneWidth = Math.min(normalWidth, minChatWidth);
       const transitionWidth = Math.max(GAP, normalWidth - laneWidth);
@@ -103,7 +112,7 @@ export function resolveChatCanvasLayout({
         frame,
         container,
         frame,
-        { detailsCard: cardObstacle, composer: null },
+        { detailsCard: cardObstacle, composer: null, detailsFooter },
         minimumPreviewX,
       ),
     };
@@ -139,12 +148,13 @@ export function resolveChatCanvasLayout({
       const obstacles = {
         detailsCard: cardObstacle,
         composer: { left: chat.left, right: chat.left + chat.width, height: composerHeight },
+        detailsFooter,
       };
       frame = resolvePreviewMiniPlayerFrame({ ...preview, container, obstacles });
       frame = {
         ...frame,
         ...clampPreviewMiniPlayerPosition(
-          preview.position ?? { x: frame.x, y: container.height - frame.height - GAP },
+          preview.position ?? { x: frame.x, y: restingY(frame) },
           container,
           frame,
           obstacles,
@@ -162,7 +172,7 @@ export function resolveChatCanvasLayout({
             frame,
             container,
             frame,
-            { composer: obstacles.composer, detailsCard: findBar },
+            { composer: obstacles.composer, detailsCard: findBar, detailsFooter },
             minimumPreviewX,
           ),
         };

@@ -3,7 +3,10 @@ import { createStore } from "zustand";
 import type { ThreadPanelPresentation } from "../../rightPanelLayout";
 import type { DetailsCardMeasurement } from "./ChatCanvasContext";
 import { resolveChatCanvasLayout, type ChatCanvasPreview } from "./chatCanvasLayout";
-import { resolveThreadDetailsCardLayout } from "./threadDetailsCardLayout";
+import {
+  resolveThreadDetailsCardLayout,
+  resolveThreadDetailsFooterLayout,
+} from "./threadDetailsCardLayout";
 
 interface CanvasEdges {
   readonly left: number;
@@ -19,6 +22,8 @@ export interface ChatCanvasMeasurements {
   readonly maxChatWidth: number;
   readonly minChatWidth: number;
   readonly composerHeight: number;
+  /** The composer input's bottom edge in canvas coordinates; null while no composer is docked. */
+  readonly composerBottom: number | null;
   readonly timelineGutter: number;
   /** The find bar's box in canvas coordinates while it is shown. */
   readonly findBar: CanvasEdges | null;
@@ -27,8 +32,10 @@ export interface ChatCanvasMeasurements {
 interface ChatCanvasStoreState {
   readonly measurements: ChatCanvasMeasurements;
   readonly detailsCardMeasurement: DetailsCardMeasurement | null;
+  readonly detailsFooterHeight: number;
   readonly setMeasurements: (next: ChatCanvasMeasurements) => void;
   readonly measureDetailsCard: (next: DetailsCardMeasurement) => void;
+  readonly measureDetailsFooter: (height: number) => void;
 }
 
 const INITIAL_MEASUREMENTS: ChatCanvasMeasurements = {
@@ -38,6 +45,7 @@ const INITIAL_MEASUREMENTS: ChatCanvasMeasurements = {
   maxChatWidth: 768,
   minChatWidth: 640,
   composerHeight: 0,
+  composerBottom: null,
   timelineGutter: 0,
   findBar: null,
 };
@@ -54,6 +62,7 @@ const sameMeasurements = (a: ChatCanvasMeasurements, b: ChatCanvasMeasurements) 
   a.maxChatWidth === b.maxChatWidth &&
   a.minChatWidth === b.minChatWidth &&
   a.composerHeight === b.composerHeight &&
+  a.composerBottom === b.composerBottom &&
   a.timelineGutter === b.timelineGutter &&
   sameEdges(a.findBar, b.findBar);
 
@@ -65,6 +74,7 @@ export const createChatCanvasStore = () =>
   createStore<ChatCanvasStoreState>()((set) => ({
     measurements: INITIAL_MEASUREMENTS,
     detailsCardMeasurement: null,
+    detailsFooterHeight: 0,
     setMeasurements: (next) =>
       set((state) => (sameMeasurements(state.measurements, next) ? state : { measurements: next })),
     measureDetailsCard: (next) =>
@@ -77,6 +87,10 @@ export const createChatCanvasStore = () =>
           ? state
           : { detailsCardMeasurement: next };
       }),
+    measureDetailsFooter: (height) =>
+      set((state) =>
+        state.detailsFooterHeight === height ? state : { detailsFooterHeight: height },
+      ),
   }));
 
 export type ChatCanvasStore = ReturnType<typeof createChatCanvasStore>;
@@ -84,12 +98,14 @@ export type ChatCanvasStore = ReturnType<typeof createChatCanvasStore>;
 export function resolveChatCanvasModel({
   measurements,
   detailsCardMeasurement,
+  detailsFooterHeight = 0,
   threadRef,
   preview,
   detailsCardInlineOpen,
 }: {
   measurements: ChatCanvasMeasurements;
   detailsCardMeasurement: DetailsCardMeasurement | null;
+  detailsFooterHeight?: number;
   /** The thread whose details card sits on the canvas; other threads' measurements are stale. */
   threadRef: ScopedThreadRef | null;
   preview: ChatCanvasPreview | null;
@@ -130,6 +146,23 @@ export function resolveChatCanvasModel({
             Math.min(detailsCardMeasured.fullContentHeight, preferredDetailsCard.height),
         }
       : null;
+  const footerLayout =
+    detailsCardInlineOpen && preferredDetailsCard
+      ? resolveThreadDetailsFooterLayout({
+          placement: preferredDetailsCard,
+          footerHeight: detailsFooterHeight,
+          composerBottom: measurements.composerBottom,
+          frame: null,
+        })
+      : null;
+  const detailsFooter =
+    preferredDetailsCard && footerLayout?.visible
+      ? {
+          left: preferredDetailsCard.x,
+          right: preferredDetailsCard.x + preferredDetailsCard.width,
+          top: footerLayout.bottom - detailsFooterHeight,
+        }
+      : null;
   const layout = resolveChatCanvasLayout({
     container,
     preview,
@@ -139,6 +172,7 @@ export function resolveChatCanvasModel({
     composerHeight: measurements.composerHeight,
     detailsCard,
     findBar,
+    detailsFooter,
   });
   const detailsCardPlacement = resolveThreadDetailsCardLayout({
     container,
@@ -157,5 +191,6 @@ export function resolveChatCanvasModel({
     preferredDetailsCard,
     detailsCardPlacement,
     detailsCardMode,
+    composerBottom: measurements.composerBottom,
   };
 }

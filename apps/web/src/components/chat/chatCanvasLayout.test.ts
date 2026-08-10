@@ -4,6 +4,7 @@ import { resizePreviewMiniPlayer } from "../preview/previewMiniPlayerLayout";
 import {
   resolveThreadDetailsCardDensity,
   resolveThreadDetailsCardLayout,
+  resolveThreadDetailsFooterLayout,
 } from "./threadDetailsCardLayout";
 
 const preview: ChatCanvasPreview = {
@@ -323,6 +324,43 @@ describe("chat canvas layout", () => {
     expect(result.overlapsDetailsCard).toBe(true);
     expect(result.overlapsChat).toBe(true);
     expect(result.frame).toEqual({ x: 12, y: 396, width: 1300, height: 400 });
+  });
+  it("keeps the preview above the details footer at rest and while dragged", () => {
+    const detailsFooter = { left: 1292, right: 1572, top: 860 };
+    const layout = (position: ChatCanvasPreview["position"]) =>
+      resolveChatCanvasLayout({
+        container: { width: 1584, height: 988 },
+        composerHeight: 180,
+        detailsFooter,
+        preview: position ? { ...preview, position, lastInteraction: "drag" } : preview,
+      }).frame!;
+    const resting = layout(null);
+    expect(resting.y + resting.height).toBe(detailsFooter.top - 12);
+    const dragged = layout({ x: 1240, y: 900 });
+    expect(dragged.y + dragged.height).toBeLessThanOrEqual(detailsFooter.top - 12);
+  });
+  it("pins the details footer to the composer and gives way when it cannot fit", () => {
+    const placement = { x: 908, y: 12, right: 12, width: 280, height: 776 } as const;
+    const footer = (
+      overrides: Partial<Parameters<typeof resolveThreadDetailsFooterLayout>[0]> = {},
+    ) =>
+      resolveThreadDetailsFooterLayout({
+        placement,
+        footerHeight: 100,
+        composerBottom: 760,
+        frame: null,
+        ...overrides,
+      });
+    expect(footer()).toEqual({ bottom: 760, visible: true, cardHeight: 636 });
+    expect(footer({ composerBottom: null })).toMatchObject({ bottom: 788, cardHeight: 664 });
+    expect(footer({ placement: { ...placement, height: 400 } })).toMatchObject({ bottom: 412 });
+    // Unmeasured, too tall for the card to keep its minimum, or under a docked preview.
+    expect(footer({ footerHeight: 0 })).toMatchObject({ visible: false, cardHeight: 776 });
+    expect(footer({ footerHeight: 600 })).toMatchObject({ visible: false, cardHeight: 776 });
+    expect(footer({ frame: { x: 860, y: 600, width: 320, height: 200 } })).toMatchObject({
+      visible: false,
+      cardHeight: 776,
+    });
   });
 });
 
