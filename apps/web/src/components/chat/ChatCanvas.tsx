@@ -5,6 +5,7 @@ import type { ChatCanvasPreview } from "./chatCanvasLayout";
 import { resolveChatCanvasModel, type ChatCanvasStore } from "./canvasStore";
 import { selectThreadPanelOpen, useRightPanelStore } from "../../rightPanelStore";
 import { observeResize } from "../../lib/observeResize";
+import { DRAFT_HERO_TRANSITION_ANIMATION_ID } from "./draftHeroTransition";
 import type { ScopedThreadRef } from "@t3tools/contracts";
 
 function panelWidthTransitions(element: HTMLElement) {
@@ -64,6 +65,7 @@ export function ChatCanvas({
   const [timelineElement, registerTimeline] = useState<HTMLElement | null>(null);
   const measurements = useStore(store, (state) => state.measurements);
   const detailsCardMeasurement = useStore(store, (state) => state.detailsCardMeasurement);
+  const detailsFooterHeight = useStore(store, (state) => state.detailsFooterHeight);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- observes canvas, find bar and timeline resizes and writes the measurements to the canvas store
   useLayoutEffect(() => {
     const element = elementRef.current;
@@ -71,10 +73,22 @@ export function ChatCanvas({
     if (!element || !probe) return;
     const findBar =
       detailsCardTopInset > 0 ? element.querySelector<HTMLElement>("[data-thread-find-bar]") : null;
+    const composerSurface =
+      composerOverlayElement?.querySelector<HTMLElement>(
+        '[data-chat-composer-main-surface="true"]',
+      ) ?? null;
     let disposed = false;
     // Seeking forces layout, so it runs once when a transition starts, not every frame.
     let transitionWidths: ReturnType<typeof measureTransitionWidths> = null;
     const measure = () => {
+      // The draft hero FLIP moves the composer by transform, which no resize reports, so measure again where it lands.
+      for (const animation of composerOverlayElement?.getAnimations?.({ subtree: true }) ?? []) {
+        if (animation.id !== DRAFT_HERO_TRANSITION_ANIMATION_ID) continue;
+        animation.finished.then(
+          () => !disposed && measure(),
+          () => undefined,
+        );
+      }
       const width = element.clientWidth;
       const transitions = panelWidthTransitions(element);
       if (
@@ -101,6 +115,7 @@ export function ChatCanvas({
       }
       const canvasBounds = element.getBoundingClientRect();
       const findBarBounds = findBar?.getBoundingClientRect();
+      const composerBounds = composerSurface?.getBoundingClientRect();
       const styles = getComputedStyle(probe);
       store.getState().setMeasurements({
         findBar:
@@ -118,6 +133,8 @@ export function ChatCanvas({
         maxChatWidth: Number.parseFloat(styles.width),
         minChatWidth: Number.parseFloat(styles.minWidth),
         composerHeight: composerOverlayElement?.getBoundingClientRect().height ?? 0,
+        // 32px is the context strip below the input, so the usage card spans it too.
+        composerBottom: composerBounds ? composerBounds.bottom + 32 - canvasBounds.top : null,
         timelineGutter: timelineElement
           ? (timelineElement.offsetWidth - timelineElement.clientWidth) / 2
           : 0,
@@ -142,6 +159,7 @@ export function ChatCanvas({
   const model = resolveChatCanvasModel({
     measurements,
     detailsCardMeasurement,
+    detailsFooterHeight,
     threadRef,
     preview,
     detailsCardInlineOpen,
@@ -153,9 +171,12 @@ export function ChatCanvas({
     previewKey: preview?.key ?? null,
     registerTimeline,
     measureDetailsCard: store.getState().measureDetailsCard,
+    detailsFooterHeight,
+    measureDetailsFooter: store.getState().measureDetailsFooter,
     detailsCardTopInset: model.detailsCardTopInset,
     preferredDetailsCard: model.preferredDetailsCard,
     detailsCardPlacement: model.detailsCardPlacement,
+    composerBottom: model.composerBottom,
   };
   const { layout } = context;
   return (

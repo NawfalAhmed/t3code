@@ -67,6 +67,8 @@ interface HorizontalSpan {
 export interface PreviewMiniPlayerObstacles {
   readonly composer: (HorizontalSpan & { readonly height: number }) | null;
   readonly detailsCard: (HorizontalSpan & { readonly bottom: number }) | null;
+  /** The card docked beside the composer, below the details card. */
+  readonly detailsFooter?: (HorizontalSpan & { readonly top: number }) | null;
 }
 
 const NO_PREVIEW_MINI_PLAYER_OBSTACLES: PreviewMiniPlayerObstacles = {
@@ -83,10 +85,14 @@ function floorFor(
   container: PreviewMiniPlayerSize,
   obstacles: PreviewMiniPlayerObstacles,
 ): number {
-  const { composer } = obstacles;
-  return composer && spansOverlap(span, composer)
-    ? container.height - Math.max(0, composer.height)
-    : container.height;
+  const { composer, detailsFooter } = obstacles;
+  const floor =
+    composer && spansOverlap(span, composer)
+      ? container.height - Math.max(0, composer.height)
+      : container.height;
+  return detailsFooter && spansOverlap(span, detailsFooter)
+    ? Math.min(floor, detailsFooter.top)
+    : floor;
 }
 
 function ceilingFor(span: HorizontalSpan, obstacles: PreviewMiniPlayerObstacles): number {
@@ -195,9 +201,9 @@ export function clampPreviewMiniPlayerPosition(
     };
   };
   const fallback = fitRows(inside.x);
-  const { composer, detailsCard } = obstacles;
+  const { composer, detailsCard, detailsFooter = null } = obstacles;
   const span = spanOf(inside.x, player.width);
-  const beside = [composer, detailsCard]
+  const beside = [composer, detailsCard, detailsFooter]
     .filter(
       (obstacle): obstacle is NonNullable<typeof obstacle> =>
         obstacle !== null && spansOverlap(span, obstacle),
