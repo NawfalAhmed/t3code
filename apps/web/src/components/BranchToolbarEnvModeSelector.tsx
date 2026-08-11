@@ -1,16 +1,17 @@
 import { ComposerSelectControl } from "./chat/ComposerControl";
 import { ComposerContextLabel } from "./ComposerContextLabel";
-import { FolderGit2Icon, FolderGitIcon, FolderIcon } from "lucide-react";
+import { FolderGit2Icon, FolderGitIcon, FolderIcon, HistoryIcon } from "lucide-react";
 import { memo, type MouseEvent as ReactMouseEvent } from "react";
 
 import {
   resolveCurrentWorkspaceLabel,
   resolveEnvModeLabel,
   resolveLockedWorkspaceLabel,
+  resolveWorktreeLabel,
+  type ExistingWorktree,
   type EnvMode,
 } from "./BranchToolbar.logic";
 import { useComposerMenuProps } from "./chat/composerEventScope";
-import { PreviousWorktreeItemContent } from "./PreviousWorktreeItemContent";
 import {
   Select,
   SelectGroup,
@@ -24,7 +25,7 @@ import { useAtomValue } from "@effect/atom-react";
 import { shortcutLabelForCommand } from "../keybindings";
 import { primaryServerKeybindingsAtom } from "../state/server";
 
-const PREVIOUS_WORKTREE_SELECT_VALUE = "previous-worktree";
+export const WORKTREE_SELECT_VALUE_PREFIX = "worktree:";
 
 interface BranchToolbarEnvModeSelectorProps {
   forceNewWorktree?: boolean;
@@ -32,9 +33,8 @@ interface BranchToolbarEnvModeSelectorProps {
   effectiveEnvMode: EnvMode;
   activeWorktreePath: string | null;
   onEnvModeChange: (mode: EnvMode) => void;
-  previousWorktreeLabel?: string | null;
-  previousWorktreeBranch?: string | null;
-  onUsePreviousWorktree?: () => void;
+  worktrees: ReadonlyArray<ExistingWorktree>;
+  onUseWorktree: (worktree: ExistingWorktree) => void;
 }
 
 export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSelector({
@@ -43,25 +43,24 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
   effectiveEnvMode,
   activeWorktreePath,
   onEnvModeChange,
-  previousWorktreeLabel,
-  previousWorktreeBranch = null,
-  onUsePreviousWorktree,
+  worktrees,
+  onUseWorktree,
 }: BranchToolbarEnvModeSelectorProps) {
   const composerFloatingLayerProps = useComposerMenuProps();
   const shortcutLabel = shortcutLabelForCommand(
     useAtomValue(primaryServerKeybindingsAtom),
     "composer.workspace",
   );
-  const showPreviousWorktree = Boolean(previousWorktreeLabel && onUsePreviousWorktree);
   const envModeItems = [
     {
       value: "local",
       label: resolveCurrentWorkspaceLabel(activeWorktreePath),
     },
     { value: "worktree", label: resolveEnvModeLabel("worktree") },
-    ...(showPreviousWorktree && previousWorktreeLabel
-      ? [{ value: PREVIOUS_WORKTREE_SELECT_VALUE, label: previousWorktreeLabel }]
-      : []),
+    ...worktrees.map((worktree) => ({
+      value: `${WORKTREE_SELECT_VALUE_PREFIX}${worktree.worktreePath}`,
+      label: resolveWorktreeLabel(worktree),
+    })),
   ];
 
   const stopContextMenuMouseDown = (event: ReactMouseEvent) => {
@@ -108,8 +107,11 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
       modal={false}
       value={effectiveEnvMode}
       onValueChange={(value: string | null) => {
-        if (value === PREVIOUS_WORKTREE_SELECT_VALUE) {
-          onUsePreviousWorktree?.();
+        if (value?.startsWith(WORKTREE_SELECT_VALUE_PREFIX)) {
+          const worktree = worktrees.find(
+            (candidate) => `${WORKTREE_SELECT_VALUE_PREFIX}${candidate.worktreePath}` === value,
+          );
+          if (worktree) onUseWorktree(worktree);
           return;
         }
         onEnvModeChange(value as EnvMode);
@@ -150,7 +152,7 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
       <SelectPopup
         alignItemWithTrigger={false}
         {...composerFloatingLayerProps}
-        className={showPreviousWorktree ? "w-[min(21rem,calc(100vw-2rem))]" : undefined}
+        className={worktrees.length > 0 ? "w-[min(21rem,calc(100vw-2rem))]" : undefined}
       >
         <SelectGroup>
           <SelectGroupLabel>Workspace</SelectGroupLabel>
@@ -170,11 +172,17 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
               {resolveEnvModeLabel("worktree")}
             </span>
           </SelectItem>
-          {showPreviousWorktree && previousWorktreeLabel ? (
-            <SelectItem value={PREVIOUS_WORKTREE_SELECT_VALUE}>
-              <PreviousWorktreeItemContent branch={previousWorktreeBranch} />
+          {worktrees.map((worktree) => (
+            <SelectItem
+              key={worktree.worktreePath}
+              value={`${WORKTREE_SELECT_VALUE_PREFIX}${worktree.worktreePath}`}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <HistoryIcon className="size-3" />
+                {resolveWorktreeLabel(worktree)}
+              </span>
             </SelectItem>
-          ) : null}
+          ))}
         </SelectGroup>
       </SelectPopup>
     </Select>

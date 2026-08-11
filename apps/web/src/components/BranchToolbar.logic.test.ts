@@ -7,10 +7,53 @@ import {
   resolveDraftEnvModeAfterBranchChange,
   resolveEffectiveEnvMode,
   resolveBranchToolbarPrBranch,
+  resolveExistingWorktrees,
   resolveLocalCheckoutBranchMismatch,
   sanitizeNewRefName,
+  resolveWorktreeLabel,
   shouldIncludeBranchPickerItem,
 } from "./BranchToolbar.logic";
+
+describe("resolveExistingWorktrees", () => {
+  it("returns every live linked worktree and excludes the main checkout", () => {
+    expect(
+      resolveExistingWorktrees({
+        refs: [
+          { name: "main", worktreePath: "/repo" },
+          { name: "feature-a", worktreePath: "/repo/.t3/worktrees/feature-a" },
+          { name: "feature-b", worktreePath: "/repo/.t3/worktrees/feature-b" },
+        ],
+        projectWorkspaceRoot: "/repo",
+        currentWorktreePath: null,
+      }),
+    ).toEqual([
+      { branch: "feature-a", worktreePath: "/repo/.t3/worktrees/feature-a" },
+      { branch: "feature-b", worktreePath: "/repo/.t3/worktrees/feature-b" },
+    ]);
+  });
+
+  it("excludes the active worktree and deduplicates paths", () => {
+    expect(
+      resolveExistingWorktrees({
+        refs: [
+          { name: "feature-a", worktreePath: "/repo/.t3/worktrees/feature-a" },
+          { name: "feature-a-alias", worktreePath: "/repo/.t3/worktrees/feature-a" },
+          { name: "feature-b", worktreePath: "/repo/.t3/worktrees/feature-b" },
+        ],
+        projectWorkspaceRoot: "/repo",
+        currentWorktreePath: "/repo/.t3/worktrees/feature-a",
+      }),
+    ).toEqual([{ branch: "feature-b", worktreePath: "/repo/.t3/worktrees/feature-b" }]);
+  });
+});
+
+describe("resolveWorktreeLabel", () => {
+  it("identifies an existing worktree", () => {
+    expect(resolveWorktreeLabel({ branch: "feature-a", worktreePath: "/repo/feature-a" })).toBe(
+      "Existing Worktree (feature-a)",
+    );
+  });
+});
 
 describe("resolveDraftEnvModeAfterBranchChange", () => {
   it("switches to local mode when returning from an existing worktree to the main worktree", () => {
