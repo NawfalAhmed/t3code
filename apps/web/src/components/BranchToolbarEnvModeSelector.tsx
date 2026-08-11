@@ -5,6 +5,8 @@ import {
   resolveCurrentWorkspaceLabel,
   resolveEnvModeLabel,
   resolveLockedWorkspaceLabel,
+  resolveWorktreeLabel,
+  type ExistingWorktree,
   type EnvMode,
 } from "./BranchToolbar.logic";
 import { composerFloatingLayerProps } from "./chat/composerEventScope";
@@ -18,15 +20,15 @@ import {
   SelectValue,
 } from "./ui/select";
 
-const PREVIOUS_WORKTREE_SELECT_VALUE = "previous-worktree";
+export const WORKTREE_SELECT_VALUE_PREFIX = "worktree:";
 
 interface BranchToolbarEnvModeSelectorProps {
   envLocked: boolean;
   effectiveEnvMode: EnvMode;
   activeWorktreePath: string | null;
   onEnvModeChange: (mode: EnvMode) => void;
-  previousWorktreeLabel?: string | null;
-  onUsePreviousWorktree?: () => void;
+  worktrees: ReadonlyArray<ExistingWorktree>;
+  onUseWorktree: (worktree: ExistingWorktree) => void;
 }
 
 export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSelector({
@@ -34,19 +36,19 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
   effectiveEnvMode,
   activeWorktreePath,
   onEnvModeChange,
-  previousWorktreeLabel,
-  onUsePreviousWorktree,
+  worktrees,
+  onUseWorktree,
 }: BranchToolbarEnvModeSelectorProps) {
-  const showPreviousWorktree = Boolean(previousWorktreeLabel && onUsePreviousWorktree);
   const envModeItems = useMemo(
     () => [
       { value: "local", label: resolveCurrentWorkspaceLabel(activeWorktreePath) },
       { value: "worktree", label: resolveEnvModeLabel("worktree") },
-      ...(showPreviousWorktree && previousWorktreeLabel
-        ? [{ value: PREVIOUS_WORKTREE_SELECT_VALUE, label: previousWorktreeLabel }]
-        : []),
+      ...worktrees.map((worktree) => ({
+        value: `${WORKTREE_SELECT_VALUE_PREFIX}${worktree.worktreePath}`,
+        label: resolveWorktreeLabel(worktree),
+      })),
     ],
-    [activeWorktreePath, previousWorktreeLabel, showPreviousWorktree],
+    [activeWorktreePath, worktrees],
   );
 
   if (envLocked) {
@@ -80,8 +82,11 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
       modal={false}
       value={effectiveEnvMode}
       onValueChange={(value: string | null) => {
-        if (value === PREVIOUS_WORKTREE_SELECT_VALUE) {
-          onUsePreviousWorktree?.();
+        if (value?.startsWith(WORKTREE_SELECT_VALUE_PREFIX)) {
+          const worktree = worktrees.find(
+            (candidate) => `${WORKTREE_SELECT_VALUE_PREFIX}${candidate.worktreePath}` === value,
+          );
+          if (worktree) onUseWorktree(worktree);
           return;
         }
         onEnvModeChange(value as EnvMode);
@@ -133,14 +138,17 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
               {resolveEnvModeLabel("worktree")}
             </span>
           </SelectItem>
-          {showPreviousWorktree && previousWorktreeLabel ? (
-            <SelectItem value={PREVIOUS_WORKTREE_SELECT_VALUE}>
+          {worktrees.map((worktree) => (
+            <SelectItem
+              key={worktree.worktreePath}
+              value={`${WORKTREE_SELECT_VALUE_PREFIX}${worktree.worktreePath}`}
+            >
               <span className="inline-flex items-center gap-1.5">
                 <HistoryIcon className="size-3" />
-                {previousWorktreeLabel}
+                {resolveWorktreeLabel(worktree)}
               </span>
             </SelectItem>
-          ) : null}
+          ))}
         </SelectGroup>
       </SelectPopup>
     </Select>
