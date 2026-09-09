@@ -1,0 +1,70 @@
+name: Sync fork
+
+on:
+  schedule:
+    - cron: "0 4,12 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out fork
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Rebase fork changes onto upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          default_branch="$(gh api "repos/${REPOSITORY}" --jq '.default_branch')"
+          upstream_repository="$(gh api "repos/${REPOSITORY}" --jq '.parent.full_name')"
+          fork_head="$(git rev-parse "origin/${default_branch}")"
+
+          git remote add upstream "https://github.com/${upstream_repository}.git"
+          git fetch --no-tags upstream "${default_branch}"
+          upstream_head="$(git rev-parse "upstream/${default_branch}")"
+
+          if git merge-base --is-ancestor "${upstream_head}" "${fork_head}"; then
+            echo "Fork already contains the latest upstream commit."
+            exit 0
+          fi
+
+          fork_base="$(git merge-base "${fork_head}" "${upstream_head}")"
+          fork_paths_file="${RUNNER_TEMP}/fork-sync-paths"
+          git diff --name-only -z "${fork_base}" "${fork_head}" > "${fork_paths_file}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local core.hooksPath /dev/null
+          export VITE_GIT_HOOKS=0
+
+          git checkout --detach "${upstream_head}"
+
+          while IFS= read -r -d '' path; do
+            if git cat-file -e "${fork_head}:${path}" 2>/dev/null; then
+              git restore --source="${fork_head}" --staged --worktree -- "${path}"
+            else
+              git rm -f --ignore-unmatch -- "${path}"
+            fi
+          done < "${fork_paths_file}"
+
+          git rm -r -f --ignore-unmatch -- .github/workflows
+          git restore \
+            --source="${fork_head}" \
+            --staged \
+            --worktree \
+            -- .github/workflows
+
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: remove all forked workflows, instead add sync fork worflow"
+          fi
+
+          git push \
+            --force-with-lease="refs/heads/${default_branch}:${fork_head}" \
+            origin \
+            "HEAD:${default_branch}"
