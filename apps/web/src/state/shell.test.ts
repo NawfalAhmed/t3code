@@ -17,6 +17,7 @@ const REMOTE = EnvironmentId.make("remote");
 function shellState(status: EnvironmentShellState["status"]): EnvironmentShellState {
   return {
     status,
+    baselineRevision: 0,
     snapshot:
       status === "empty"
         ? Option.none()

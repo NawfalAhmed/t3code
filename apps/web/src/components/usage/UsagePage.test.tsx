@@ -38,6 +38,12 @@ vi.mock("react", async (importOriginal) => {
   };
 });
 
+// Rendered without a router, so the page's own metric preference decides the
+// view: `useSearch` stands in for a URL that pins nothing.
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => vi.fn(),
+  useSearch: () => undefined,
+}));
 vi.mock("../../env", () => ({ isElectron: false }));
 vi.mock("../../state/usage", () => ({ useUsage: testState.useUsage }));
 vi.mock("../ui/button", () => ({ Button: "button" }));

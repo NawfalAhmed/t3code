@@ -13,10 +13,10 @@ import {
   resolveBranchToolbarPrBranch,
   resolveBranchToolbarValue,
   resolveLockedWorkspaceLabel,
+  resolveExistingWorktrees,
   resolveLocalCheckoutBranchMismatch,
-  resolvePreviousWorktreeLabel,
-  resolvePreviousWorktreeSeed,
   sanitizeNewRefName,
+  resolveWorktreeLabel,
   shouldIncludeBranchPickerItem,
   shouldShowComposerContextStrip,
   shouldShowEnvironmentIndicator,
@@ -25,87 +25,43 @@ import {
 const localEnvironmentId = EnvironmentId.make("environment-local");
 const remoteEnvironmentId = EnvironmentId.make("environment-remote");
 
-describe("resolvePreviousWorktreeSeed", () => {
-  it("picks the most recently updated worktree thread", () => {
+describe("resolveExistingWorktrees", () => {
+  it("returns every live linked worktree and excludes the main checkout", () => {
     expect(
-      resolvePreviousWorktreeSeed({
-        threads: [
-          {
-            branch: "t3/older",
-            worktreePath: "/repo/.t3/worktrees/older",
-            updatedAt: "2026-07-20T00:00:00.000Z",
-          },
-          {
-            branch: "t3/newer",
-            worktreePath: "/repo/.t3/worktrees/newer",
-            updatedAt: "2026-07-22T00:00:00.000Z",
-          },
-          { branch: "main", worktreePath: null, updatedAt: "2026-07-23T00:00:00.000Z" },
+      resolveExistingWorktrees({
+        refs: [
+          { name: "main", worktreePath: "/repo" },
+          { name: "feature-a", worktreePath: "/repo/.t3/worktrees/feature-a" },
+          { name: "feature-b", worktreePath: "/repo/.t3/worktrees/feature-b" },
         ],
+        projectWorkspaceRoot: "/repo",
         currentWorktreePath: null,
       }),
-    ).toEqual({ branch: "t3/newer", worktreePath: "/repo/.t3/worktrees/newer" });
+    ).toEqual([
+      { branch: "feature-a", worktreePath: "/repo/.t3/worktrees/feature-a" },
+      { branch: "feature-b", worktreePath: "/repo/.t3/worktrees/feature-b" },
+    ]);
   });
 
-  it("skips the worktree the composer already points at", () => {
+  it("excludes the active worktree and deduplicates paths", () => {
     expect(
-      resolvePreviousWorktreeSeed({
-        threads: [
-          {
-            branch: "t3/current",
-            worktreePath: "/repo/.t3/worktrees/current",
-            updatedAt: "2026-07-22T00:00:00.000Z",
-          },
+      resolveExistingWorktrees({
+        refs: [
+          { name: "feature-a", worktreePath: "/repo/.t3/worktrees/feature-a" },
+          { name: "feature-a-alias", worktreePath: "/repo/.t3/worktrees/feature-a" },
+          { name: "feature-b", worktreePath: "/repo/.t3/worktrees/feature-b" },
         ],
-        currentWorktreePath: "/repo/.t3/worktrees/current",
+        projectWorkspaceRoot: "/repo",
+        currentWorktreePath: "/repo/.t3/worktrees/feature-a",
       }),
-    ).toBeNull();
-  });
-
-  it("returns null when no thread has a worktree", () => {
-    expect(
-      resolvePreviousWorktreeSeed({
-        threads: [{ branch: "main", worktreePath: null, updatedAt: "2026-07-22T00:00:00.000Z" }],
-        currentWorktreePath: null,
-      }),
-    ).toBeNull();
-  });
-
-  it("ignores archived threads and threads with unparseable timestamps", () => {
-    expect(
-      resolvePreviousWorktreeSeed({
-        threads: [
-          {
-            branch: "t3/archived",
-            worktreePath: "/repo/.t3/worktrees/archived",
-            updatedAt: "2026-07-23T00:00:00.000Z",
-            archivedAt: "2026-07-23T01:00:00.000Z",
-          },
-          {
-            branch: "t3/garbage-timestamp",
-            worktreePath: "/repo/.t3/worktrees/garbage",
-            updatedAt: "not-a-date",
-          },
-          {
-            branch: "t3/live",
-            worktreePath: "/repo/.t3/worktrees/live",
-            updatedAt: "2026-07-21T00:00:00.000Z",
-            archivedAt: null,
-          },
-        ],
-        currentWorktreePath: null,
-      }),
-    ).toEqual({ branch: "t3/live", worktreePath: "/repo/.t3/worktrees/live" });
+    ).toEqual([{ branch: "feature-b", worktreePath: "/repo/.t3/worktrees/feature-b" }]);
   });
 });
 
-describe("resolvePreviousWorktreeLabel", () => {
-  it("includes the branch when known", () => {
-    expect(resolvePreviousWorktreeLabel({ branch: "t3/fix-thing", worktreePath: "/wt" })).toBe(
-      "Previous worktree (t3/fix-thing)",
-    );
-    expect(resolvePreviousWorktreeLabel({ branch: null, worktreePath: "/wt" })).toBe(
-      "Previous worktree",
+describe("resolveWorktreeLabel", () => {
+  it("identifies an existing worktree", () => {
+    expect(resolveWorktreeLabel({ branch: "feature-a", worktreePath: "/repo/feature-a" })).toBe(
+      "Existing Worktree (feature-a)",
     );
   });
 });

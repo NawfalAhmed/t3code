@@ -6,11 +6,19 @@ import {
   ClientSettingsSchema,
   ClientSettingsPatch,
   ClaudeSettings,
+  DEFAULT_CLIENT_SETTINGS,
   DEFAULT_SERVER_SETTINGS,
   resolveProviderInstanceEnabled,
   ServerSettings,
   ServerSettingsPatch,
 } from "./settings.ts";
+
+describe("ClientSettings desktop notifications", () => {
+  it("decode_legacySettings_defaultsDisabled", () => {
+    expect(decodeClientSettings({}).desktopNotificationsEnabled).toBe(false);
+    expect(DEFAULT_CLIENT_SETTINGS.desktopNotificationsEnabled).toBe(false);
+  });
+});
 
 const decodeClientSettings = Schema.decodeUnknownSync(ClientSettingsSchema);
 const decodeClientSettingsPatch = Schema.decodeUnknownSync(ClientSettingsPatch);
@@ -471,6 +479,15 @@ describe("ClientSettings pull request merge methods", () => {
         pullRequestMergeMethodOverrides: { project: "fast-forward" },
       }),
     ).toThrow();
+  });
+});
+
+describe("ClientSettings new project button", () => {
+  it("shows the button by default and accepts the hide preference", () => {
+    expect(decodeClientSettings({}).hideNewProjectButton).toBe(false);
+    expect(decodeClientSettingsPatch({ hideNewProjectButton: true }).hideNewProjectButton).toBe(
+      true,
+    );
   });
 });
 

@@ -5,6 +5,7 @@ import {
   changeQuestionAttachmentPreparation,
 } from "../../questionAttachments";
 import type {
+  ProviderOptionSelection,
   ApprovalRequestId,
   AssistantCitation,
   ChatFileAttachment,
@@ -28,7 +29,11 @@ import {
 } from "@t3tools/contracts";
 import type { EnvironmentConnectionPresentation } from "@t3tools/client-runtime/connection";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
-import { createModelSelection, normalizeModelSlug } from "@t3tools/shared/model";
+import {
+  createModelSelection,
+  isClaudeUltrathinkPrompt,
+  normalizeModelSlug,
+} from "@t3tools/shared/model";
 import { USAGE_LIMITS_COMMAND } from "@t3tools/shared/usageLimits";
 import {
   Fragment,
@@ -174,6 +179,8 @@ import {
 import { measureRestingComposerControls } from "./restingComposerControlsMeasurement";
 import { observeResponsiveBreakpointFade, usePanelAnimationSettings } from "../../panelAnimations";
 import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../ComposerPromptEditor";
+import { ModelReasoningPicker } from "./ModelReasoningPicker";
+import { buildModelReasoningGridSpec } from "./ModelReasoningGrid";
 import { ProviderModelPicker } from "./ProviderModelPicker";
 import { type ComposerCommandItem, ComposerCommandMenu } from "./ComposerCommandMenu";
 import { ComposerPendingApprovalActions } from "./ComposerPendingApprovalActions";
@@ -240,6 +247,15 @@ import {
   suppressActiveComposerScrollGesture,
 } from "./composerScrollGesture";
 import { prepareVideoFirstFrame } from "../../lib/videoFirstFrame";
+
+const MODEL_REASONING_LEVEL_IDS = new Set(["low", "medium", "high", "xhigh"]);
+
+function shouldShowModelReasoningMoreOption(descriptorId: string, optionId: string): boolean {
+  return !(
+    (descriptorId === "effort" || descriptorId === "reasoningEffort") &&
+    MODEL_REASONING_LEVEL_IDS.has(optionId)
+  );
+}
 
 function ComposerVideoThumbnail({ file }: { file: File }) {
   const setVideo = useCallback(
@@ -1373,7 +1389,11 @@ export interface ChatComposerProps {
     cursorAdjacentToMention: boolean,
   ) => void;
 
-  onProviderModelSelect: (instanceId: ProviderInstanceId, model: string) => void;
+  onProviderModelSelect: (
+    instanceId: ProviderInstanceId,
+    model: string,
+    options?: ReadonlyArray<ProviderOptionSelection>,
+  ) => void;
   onOpenProviderSetup: (instanceId: ProviderInstanceId) => void;
   getModelDisabledReason: (instanceId: ProviderInstanceId, model: string) => string | null;
   toggleInteractionMode: () => void;
@@ -1568,6 +1588,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             environmentId,
           })
       : null);
+  const setComposerDraftProviderModelOptions = useComposerDraftStore(
+    (store) => store.setProviderModelOptions,
+  );
   const setComposerDraftPrompt = useComposerDraftStore((store) => store.setPrompt);
   const addComposerDraftImages = useComposerDraftStore((store) => store.addImages);
   const removeComposerDraftImage = useComposerDraftStore((store) => store.removeImage);
@@ -2246,6 +2269,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     [composerDraftTarget, promptRef, scheduleComposerFocus, setComposerDraftPrompt],
   );
 
+  const modelReasoningSpec = buildModelReasoningGridSpec({
+    provider: selectedProvider,
+    models: selectedProviderModels,
+    model: selectedModel,
+    modelOptions: composerModelOptions?.[selectedInstanceId],
+  });
   const providerTraitsMenuContent = renderProviderTraitsMenuContent({
     provider: selectedProvider,
     instanceId: selectedInstanceId,
@@ -2258,6 +2287,23 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     onPromptChange: setPromptFromTraits,
     planModeEnabled: settings.planModeEnabled,
   });
+  const providerTraitsMoreMenuContent = modelReasoningSpec
+    ? renderProviderTraitsMenuContent({
+        provider: selectedProvider,
+        instanceId: selectedInstanceId,
+        ...(routeKind === "server" ? { threadRef: routeThreadRef } : {}),
+        ...(routeKind === "draft" && draftId ? { draftId } : {}),
+        model: selectedModel,
+        models: selectedProviderModels,
+        modelOptions: composerModelOptions?.[selectedInstanceId],
+        prompt,
+        onPromptChange: setPromptFromTraits,
+        planModeEnabled: settings.planModeEnabled,
+        hiddenDescriptorIds:
+          selectedProvider === "claudeAgent" ? ["contextWindow"] : ["serviceTier", "fastMode"],
+        optionFilter: shouldShowModelReasoningMoreOption,
+      })
+    : null;
   const providerTraitsPickerInput = {
     provider: selectedProvider,
     instanceId: selectedInstanceId,
@@ -2271,7 +2317,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     planModeEnabled: settings.planModeEnabled,
     isComposerOwned: true,
   } satisfies Parameters<typeof renderProviderTraitsPicker>[0];
-  const providerTraitsPicker = renderProviderTraitsPicker(providerTraitsPickerInput);
   const {
     controlsRef: restingComposerControlsRef,
     hiddenBlockCount: restingControlsHiddenBlockCount,
@@ -4081,11 +4126,46 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   const restingHiddenBlockCount = composerControlsInStrip ? restingControlsHiddenBlockCount : 0;
   const composerControlsCompact = !composerControlsInStrip && isComposerFooterCompact;
-  const restingProviderTraitsPicker = renderProviderTraitsPicker({
-    ...providerTraitsPickerInput,
-    size: "xs",
-    hidden: composerControlsHidden || restingHiddenBlockCount > 1,
-  });
+  const providerModelReasoningPicker = modelReasoningSpec ? (
+    <ModelReasoningPicker
+      size={composerControlsInStrip ? "xs" : "sm"}
+      spec={modelReasoningSpec}
+      prompt={prompt}
+      traitsMenuContent={providerTraitsMoreMenuContent}
+      provider={selectedProvider}
+      models={selectedProviderModels}
+      model={selectedModel}
+      modelOptions={composerModelOptions?.[selectedInstanceId]}
+      getModelDisabledReason={(nextModel) =>
+        selectedProvider === "claudeAgent" &&
+        isClaudeUltrathinkPrompt(prompt.replace(/^Ultrathink:\s*/i, ""))
+          ? "Reasoning is controlled by ultrathink in the prompt"
+          : getModelDisabledReason(selectedInstanceId, nextModel)
+      }
+      onModelOptionsChange={(nextOptions) => {
+        setComposerDraftProviderModelOptions(composerDraftTarget, selectedProvider, nextOptions, {
+          instanceId: selectedInstanceId,
+          model: selectedModel,
+          persistSticky: true,
+        });
+      }}
+      onModelChange={(nextModel, nextOptions) => {
+        if (selectedProvider === "claudeAgent" && /^Ultrathink:/i.test(prompt)) {
+          setPromptFromTraits(prompt.replace(/^Ultrathink:\s*/i, ""));
+        }
+        onProviderModelSelect(selectedInstanceId, nextModel, nextOptions);
+      }}
+    />
+  ) : null;
+  const providerTraitsPicker =
+    providerModelReasoningPicker ?? renderProviderTraitsPicker(providerTraitsPickerInput);
+  const restingProviderTraitsPicker =
+    providerModelReasoningPicker ??
+    renderProviderTraitsPicker({
+      ...providerTraitsPickerInput,
+      size: "xs",
+      hidden: composerControlsHidden || restingHiddenBlockCount > 1,
+    });
   const restingBlockDefs = [
     ...(providerTraitsPicker
       ? [
@@ -4145,6 +4225,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         />
       ) : null}
       <ProviderModelPicker
+        collapseModelFamilies
         isComposerOwned
         compact={composerControlsCompact}
         disabled={providerCatalogPending}
@@ -4191,12 +4272,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         onOpenProviderSetup={onOpenProviderSetup}
       />
 
+      {composerControlsCompact && providerModelReasoningPicker}
       {composerControlsCompact ? (
         <CompactComposerControlsMenu
           interactionMode={interactionMode}
           runtimeMode={runtimeMode}
           showInteractionModeToggle={planModeUiEnabled}
-          traitsMenuContent={providerTraitsMenuContent}
+          traitsMenuContent={modelReasoningSpec ? null : providerTraitsMenuContent}
           onToggleInteractionMode={toggleInteractionMode}
           onRuntimeModeChange={handleRuntimeModeChange}
         />

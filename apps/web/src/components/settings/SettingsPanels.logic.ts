@@ -202,6 +202,24 @@ export function backgroundActivitySharedPolicySettings(
   };
 }
 
+export function buildGeneralSettingsRestorePatch(): Partial<UnifiedSettings> {
+  return {
+    timestampFormat: DEFAULT_UNIFIED_SETTINGS.timestampFormat,
+    wordWrap: DEFAULT_UNIFIED_SETTINGS.wordWrap,
+    diffIgnoreWhitespace: DEFAULT_UNIFIED_SETTINGS.diffIgnoreWhitespace,
+    sidebarThreadPreviewCount: DEFAULT_UNIFIED_SETTINGS.sidebarThreadPreviewCount,
+    desktopNotificationsEnabled: DEFAULT_UNIFIED_SETTINGS.desktopNotificationsEnabled,
+    enableLegacyTokenStreaming: DEFAULT_UNIFIED_SETTINGS.enableLegacyTokenStreaming,
+    automaticGitFetchInterval: DEFAULT_UNIFIED_SETTINGS.automaticGitFetchInterval,
+    defaultThreadEnvMode: DEFAULT_UNIFIED_SETTINGS.defaultThreadEnvMode,
+    newWorktreesStartFromOrigin: DEFAULT_UNIFIED_SETTINGS.newWorktreesStartFromOrigin,
+    addProjectBaseDirectory: DEFAULT_UNIFIED_SETTINGS.addProjectBaseDirectory,
+    confirmThreadArchive: DEFAULT_UNIFIED_SETTINGS.confirmThreadArchive,
+    confirmThreadDelete: DEFAULT_UNIFIED_SETTINGS.confirmThreadDelete,
+    textGenerationModelSelection: DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection,
+  };
+}
+
 function collapseOtelSignalsUrl(input: {
   readonly tracesUrl: string;
   readonly metricsUrl: string;

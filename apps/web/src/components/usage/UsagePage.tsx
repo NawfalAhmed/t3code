@@ -11,6 +11,7 @@ import {
   CircleDashedIcon,
   SlidersHorizontalIcon,
 } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 
 import {
@@ -68,14 +69,15 @@ import {
   type UsagePagePreferences,
 } from "./usagePagePreferences";
 
-type UsageMetric = UsageChartMetric | "limits";
+export type UsageMetric = UsageChartMetric | "limits";
 const METRIC_OPTIONS = [
   { value: "cost", label: "Cost" },
   { value: "tokens", label: "Tokens" },
   { value: "limits", label: "Limits" },
 ] as const satisfies readonly { value: UsageMetric; label: string }[];
 
-function isUsageMetric(value: string | null | undefined): value is UsageMetric {
+/** Narrows a routed or stored value onto the metrics the page can show. */
+export function isUsageMetric(value: unknown): value is UsageMetric {
   return METRIC_OPTIONS.some((option) => option.value === value);
 }
 
@@ -91,6 +93,7 @@ function isUsageWindowDays(value: number): value is UsagePagePreferences["window
 }
 
 export function UsagePage() {
+  const navigate = useNavigate();
   const [preferences, setPreferences] = useState(readUsagePagePreferences);
   const [windowSelection, setWindowSelection] = useState(() => ({
     days: preferences.windowDays,
@@ -100,7 +103,9 @@ export function UsagePage() {
       preferences.windowDays === 1 ? "hour" : "day",
     ),
   }));
-  const metric = preferences.metric;
+  // A routed metric wins over the stored one, so a link that promises limits lands on limits.
+  const routedMetric = useSearch({ from: "/usage", select: (search) => search.metric });
+  const metric = routedMetric ?? preferences.metric;
   const showingLimits = metric === "limits";
   const [isRefreshing, setIsRefreshing] = useState(false);
   const refreshingRef = useRef(false);
@@ -161,6 +166,10 @@ export function UsagePage() {
     const nextPreferences = { metric: nextMetric, windowDays };
     setPreferences(nextPreferences);
     saveUsagePagePreferences(nextPreferences);
+    // Only when the URL pinned one, so a plain visit keeps its address bar clean.
+    if (routedMetric !== undefined && routedMetric !== nextMetric) {
+      void navigate({ to: "/usage", search: { metric: nextMetric }, replace: true });
+    }
   };
   const refreshWindow = () => {
     if (refreshingRef.current) return;

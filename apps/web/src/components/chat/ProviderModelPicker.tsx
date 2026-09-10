@@ -25,6 +25,7 @@ import {
   type ComposerControlSize,
 } from "./ComposerControl";
 import { composerFloatingLayerProps } from "./composerEventScope";
+import { getModelPickerFamilyDisplayModel } from "./modelPickerVariants";
 
 export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   /**
@@ -39,6 +40,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   instanceEntries: ReadonlyArray<ProviderInstanceEntry>;
   keybindings?: ResolvedKeybindingsConfig;
   modelOptionsByInstance: ReadonlyMap<ProviderInstanceId, ReadonlyArray<ModelEsque>>;
+  collapseModelFamilies?: boolean;
   activeProviderIconClassName?: string;
   instanceIndicatorBackground?: string;
   size?: ComposerControlSize;
@@ -80,13 +82,17 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
     (activeEntry?.driverKind === "opencode" || activeEntry?.driverKind === "antigravity"
       ? undefined
       : selectedInstanceOptions[0]);
-  const triggerTitle = selectedModel
-    ? getTriggerDisplayModelName(selectedModel)
+  const triggerDisplayModel =
+    selectedModel && props.collapseModelFamilies && activeEntry
+      ? getModelPickerFamilyDisplayModel(selectedModel, activeEntry.driverKind)
+      : selectedModel;
+  const triggerTitle = triggerDisplayModel
+    ? getTriggerDisplayModelName(triggerDisplayModel)
     : props.model === ANTIGRAVITY_DEFAULT_MODEL
       ? "Choose model"
       : props.model || "Choose model";
-  const triggerLabel = selectedModel
-    ? `${getTriggerDisplayModelLabel(selectedModel)}${selectedModel.isUnavailable ? " (Unavailable)" : ""}`
+  const triggerLabel = triggerDisplayModel
+    ? `${getTriggerDisplayModelLabel(triggerDisplayModel)}${triggerDisplayModel.isUnavailable ? " (Unavailable)" : ""}`
     : triggerTitle;
   const showInstanceBadge =
     activeEntry !== null && shouldShowInstanceBadge(activeEntry, props.instanceEntries);
@@ -234,6 +240,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           instanceEntries={props.instanceEntries}
           {...(props.keybindings ? { keybindings: props.keybindings } : {})}
           modelOptionsByInstance={props.modelOptionsByInstance}
+          {...(props.collapseModelFamilies ? { collapseModelFamilies: true } : {})}
           terminalOpen={props.terminalOpen ?? false}
           onRequestClose={() => setIsMenuOpen(false)}
           {...(props.onOpenProviderSetup ? { onOpenProviderSetup: props.onOpenProviderSetup } : {})}

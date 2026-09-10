@@ -148,7 +148,18 @@ describe("environment shell synchronization", () => {
 
       const state = yield* SubscriptionRef.get(shellState);
       expect(state.status).toBe("live");
+      expect(state.baselineRevision).toBe(1);
       expect(Option.getOrThrow(state.snapshot)).toEqual(LIVE_SHELL_SNAPSHOT);
+
+      yield* Queue.offer(events, {
+        kind: "snapshot",
+        snapshot: { ...LIVE_SHELL_SNAPSHOT, snapshotSequence: 2 },
+      });
+      yield* SubscriptionRef.changes(shellState).pipe(
+        Stream.filter((next) => next.baselineRevision === 2),
+        Stream.runHead,
+      );
+      expect((yield* SubscriptionRef.get(shellState)).baselineRevision).toBe(2);
     }),
   );
 
