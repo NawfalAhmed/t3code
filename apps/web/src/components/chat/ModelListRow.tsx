@@ -10,6 +10,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import { modelPickerModelKey } from "./modelPickerKeys";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import { providerIconOpacity } from "./providerIconOpacity";
 
 export const ModelListRow = memo(function ModelListRow(props: {
   index: number;
@@ -63,6 +64,7 @@ export const ModelListRow = memo(function ModelListRow(props: {
         showBadge={props.showInstanceBadge}
         className="size-4"
         iconClassName="size-4"
+        iconOpacity={providerIconOpacity(props.driverKind, "active")}
         indicatorBackground="var(--popover)"
         badgeClassName="right-[-0.125rem] bottom-[-0.125rem] h-3 min-w-3 px-0.5 text-5xs"
       />
