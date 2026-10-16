@@ -390,10 +390,8 @@ function resolveEnvironmentIdentificationMode(input: {
   paletteThemeAllowsArtwork?: boolean;
 }): EnvironmentIdentificationMode {
   if (!input.settingsHydrated) return "none";
-  const isArtwork = input.mode !== "pill" && input.mode !== "none";
-  return input.paletteThemeActive && !input.paletteThemeAllowsArtwork && isArtwork
-    ? "pill"
-    : input.mode;
+  // Personal fork: keep artwork on custom palettes too instead of falling back to the pill.
+  return input.mode;
 }
 
 export function useEnvironmentIdentificationMode(): EnvironmentIdentificationMode {
