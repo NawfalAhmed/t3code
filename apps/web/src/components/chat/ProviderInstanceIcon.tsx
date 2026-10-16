@@ -99,6 +99,8 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
   iconClassName?: string;
   badgeClassName?: string;
   indicatorBackground?: string;
+  opacity?: number | undefined;
+  iconOpacity?: number | undefined;
 }) {
   const Icon = PROVIDER_ICON_BY_PROVIDER[props.driverKind] ?? null;
   const packageIcon = providerClients.get(props.driverKind)?.icon;
@@ -110,7 +112,7 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
         "--provider-accent-foreground": providerAccentForegroundColor(accentColor),
       } as CSSProperties)
     : undefined;
-  const badgeContent = props.badgeContent ?? "initials";
+  const badgeContent = props.badgeContent ?? (props.driverKind === "codex" ? "none" : "initials");
   const iconClassName = cn(props.size === "compact" && "size-3.5", props.iconClassName);
   const isAcpRegistry = props.driverKind === "acpRegistry";
   // A custom OpenAI-compatible endpoint has no brand: show its name, marked with the protocol.
@@ -127,7 +129,7 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
         "relative isolate z-30 inline-flex shrink-0 items-center justify-center overflow-visible",
         props.className,
       )}
-      style={accentStyle}
+      style={{ ...accentStyle, opacity: props.opacity }}
       data-provider-accent-color={accentColor}
     >
       {isAcpRegistry ? (
@@ -166,9 +168,16 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
           aria-hidden
         />
       ) : Icon ? (
-        <Icon className={cn("size-5 shrink-0", iconClassName)} aria-hidden />
+        <Icon
+          className={cn("size-5 shrink-0", iconClassName)}
+          style={{ opacity: props.iconOpacity }}
+          aria-hidden
+        />
       ) : (
-        <span className={cn("text-3xs font-semibold leading-none", iconClassName)}>
+        <span
+          className={cn("text-3xs font-semibold leading-none", iconClassName)}
+          style={{ opacity: props.iconOpacity }}
+        >
           {providerInstanceInitials(props.displayName)}
         </span>
       )}
