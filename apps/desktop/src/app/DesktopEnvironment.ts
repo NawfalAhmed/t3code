@@ -95,6 +95,9 @@ function resolveDesktopAppStageLabel(input: {
   if (input.isDevelopment) {
     return "Dev";
   }
+  if (input.appVersion.endsWith("-personal")) {
+    return "Personal";
+  }
 
   return isNightlyDesktopVersion(input.appVersion) ? "Nightly" : "Beta";
 }
@@ -107,7 +110,7 @@ export function resolveDesktopAppBranding(input: {
   return {
     baseName: APP_BASE_NAME,
     stageLabel,
-    displayName: `${APP_BASE_NAME} (${stageLabel})`,
+    displayName: stageLabel === "Personal" ? APP_BASE_NAME : `${APP_BASE_NAME} (${stageLabel})`,
   };
 }
 
