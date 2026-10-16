@@ -2255,8 +2255,12 @@ code {
 
 /* Chat width setting. Comfortable keeps the default --chat-content-max-width,
    which sizes the timeline lane, the composer, and ChatCanvas's width probe. */
+:root[data-chat-width="roomy"] {
+  --chat-content-max-width: 51rem;
+}
+
 :root[data-chat-width="wide"] {
-  --chat-content-max-width: 72rem;
+  --chat-content-max-width: 64rem;
 }
 
 :root[data-chat-width="full"] {

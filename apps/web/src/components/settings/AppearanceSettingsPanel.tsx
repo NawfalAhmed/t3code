@@ -74,6 +74,7 @@ function environmentIdentificationOptions(
 
 const CHAT_WIDTH_LABELS: Record<ChatWidth, string> = {
   comfortable: "Comfortable",
+  roomy: "Roomy",
   wide: "Wide",
   full: "Full",
 };
@@ -258,7 +259,12 @@ export function AppearanceSettingsPanel() {
               <Select
                 value={settings.chatWidth}
                 onValueChange={(value) => {
-                  if (value === "comfortable" || value === "wide" || value === "full")
+                  if (
+                    value === "comfortable" ||
+                    value === "roomy" ||
+                    value === "wide" ||
+                    value === "full"
+                  )
                     updateSettings({ chatWidth: value });
                 }}
               >
@@ -267,6 +273,7 @@ export function AppearanceSettingsPanel() {
                 </SelectTrigger>
                 <SelectPopup align="end" alignItemWithTrigger={false}>
                   <SelectItem value="comfortable">Comfortable (default)</SelectItem>
+                  <SelectItem value="roomy">Roomy</SelectItem>
                   <SelectItem value="wide">Wide</SelectItem>
                   <SelectItem value="full">Full</SelectItem>
                 </SelectPopup>
