@@ -34,13 +34,6 @@ import {
 import { ensureLocalApi } from "~/localApi";
 import { subscribeBrowserClientSettingsWrites } from "~/clientPersistenceStorage";
 import {
-  getThemeDefinition,
-  getThemePreviewSidebarArtwork,
-  resolveThemeHalf,
-  subscribeToThemePreview,
-  themeAllowsSidebarArtwork,
-} from "~/themePalette";
-import {
   modelPreferencesMigrationPatch,
   resolveModelPreferences,
 } from "@t3tools/shared/serverSettings";
@@ -54,7 +47,6 @@ import { environmentCatalog } from "~/connection/catalog";
 import { primaryServerSettingsAtom, serverEnvironment } from "~/state/server";
 import { useEnvironments, usePrimaryEnvironment } from "~/state/environments";
 import { useAtomCommand } from "~/state/use-atom-command";
-import { useTheme } from "./useTheme";
 import { msg } from "gt-react";
 import { m } from "~/i18n/messages";
 import {
@@ -411,36 +403,10 @@ export function useMergedSettings<T = UnifiedSettings>(
   });
 }
 
-function resolveEnvironmentIdentificationMode(input: {
-  mode: EnvironmentIdentificationMode;
-  settingsHydrated: boolean;
-  paletteThemeActive?: boolean;
-  paletteThemeAllowsArtwork?: boolean;
-}): EnvironmentIdentificationMode {
-  if (!input.settingsHydrated) return "none";
-  const isArtwork = input.mode !== "pill" && input.mode !== "none";
-  return input.paletteThemeActive && !input.paletteThemeAllowsArtwork && isArtwork
-    ? "pill"
-    : input.mode;
-}
-
 export function useEnvironmentIdentificationMode(): EnvironmentIdentificationMode {
   const settingsHydrated = useClientSettingsHydrated();
   const mode = useClientSettings((settings) => settings.environmentIdentificationMode);
-  const { resolvedTheme, theme, themeHalves } = useTheme();
-  const previewSidebarArtwork = useSyncExternalStore(
-    subscribeToThemePreview,
-    getThemePreviewSidebarArtwork,
-    () => null,
-  );
-  const activeTheme = resolveThemeHalf(theme, themeHalves, resolvedTheme);
-  const activeThemeDefinition = getThemeDefinition(activeTheme);
-  return resolveEnvironmentIdentificationMode({
-    mode,
-    settingsHydrated,
-    paletteThemeActive: previewSidebarArtwork !== null || activeThemeDefinition !== null,
-    paletteThemeAllowsArtwork: previewSidebarArtwork ?? themeAllowsSidebarArtwork(activeTheme),
-  });
+  return settingsHydrated ? mode : "none";
 }
 
 export async function prepareModelPreferencesPatch(
