@@ -3,6 +3,7 @@ import { type ProviderInstanceId } from "@t3tools/contracts";
 import { memo, useLayoutEffect, useRef, useState } from "react";
 import { StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import { providerIconOpacity } from "./providerIconOpacity";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import {
@@ -170,6 +171,7 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
                   showBadge={showInstanceBadge}
                   className="size-6 z-30"
                   iconClassName="size-5"
+                  iconOpacity={providerIconOpacity(entry.driverKind, "active")}
                   indicatorBackground={
                     isHovered && !isDisabled
                       ? "var(--muted)"

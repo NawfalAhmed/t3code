@@ -10,6 +10,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import { modelPickerModelKey } from "./modelPickerKeys";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import { providerIconOpacity } from "./providerIconOpacity";
 
 export const ModelListRow = memo(function ModelListRow(props: {
   index: number;
@@ -78,6 +79,7 @@ export const ModelListRow = memo(function ModelListRow(props: {
               acpRegistryIconUrl={props.acpRegistryIconUrl}
               className="size-3"
               iconClassName="size-3"
+              iconOpacity={providerIconOpacity(props.driverKind, "active")}
             />
             <span className="truncate text-xs font-normal leading-snug text-muted-foreground/70">
               {providerLabel}

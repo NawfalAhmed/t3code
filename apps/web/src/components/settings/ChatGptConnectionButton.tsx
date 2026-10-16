@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 export function ChatGptConnectionButton({ children, ...props }: ComponentProps<typeof Button>) {
   return (
     <Button {...props}>
-      <OpenAI className="size-4 shrink-0" aria-hidden="true" />
+      <OpenAI className="size-4 shrink-0 fill-current dark:fill-current" aria-hidden="true" />
       {children ?? "Continue with ChatGPT"}
     </Button>
   );
