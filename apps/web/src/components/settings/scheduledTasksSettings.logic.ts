@@ -73,7 +73,10 @@ export interface DraftState {
   readonly modelKey: string;
   readonly runtimeMode: RuntimeMode;
   readonly interactionMode: ProviderInteractionMode;
-  /** Retain the source selection's provider options when the picker leaves instanceId:model unchanged. */
+  /**
+   * Carries provider options (reasoning, temperature, …) for `modelKey`. Options for a
+   * different model are dropped, since descriptors differ between models.
+   */
   readonly baseModelSelection: ModelSelection | null;
   readonly signatureEnabled: boolean;
   readonly signatureHeader: string;
