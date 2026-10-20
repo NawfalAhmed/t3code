@@ -9548,9 +9548,6 @@
   "f225597751185044": "일정 간격, 정해진 시간, 지정한 날짜에 한 번, 또는 웹후크가 호출될 때 프롬프트를 자동으로 실행합니다.",
   "fa1c2d60bf41ddc8": "저장하기 전에 이 환경을 다시 연결하세요.",
   "28cb9f31f17a303f": "이 예약된 작업은 더 이상 존재하지 않습니다.",
-  "5a3f881a6bc1c4ff": "새 워크트리 만들기",
-  "3b91d2c532294f88": "프로젝트 체크아웃 사용",
-  "08dfe6dcf5ae8c40": "특정 체크아웃 사용",
   "038b86fd8ba9a6aa": "이 작업은 1분 미만의 이전 방식 간격을 사용합니다. 저장하면 1분 이상으로 업데이트됩니다.",
   "2f3f300a16007bd8": "일정",
   "ce1b005dfc83db03": "지정 시간",
@@ -12166,5 +12163,7 @@
   "c13842e156133e16": "{window} {percent}% left",
   "12341925a4199132": "{window} {percent}% left, resets {reset}",
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
-  "cb0852f8e19d3e46": "{provider}: {windows}"
+  "cb0852f8e19d3e46": "{provider}: {windows}",
+  "810e69d8207012d8": "No matching models.",
+  "d6d9fc563f9c484e": "in project"
 }

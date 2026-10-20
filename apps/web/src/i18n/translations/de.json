@@ -9592,9 +9592,6 @@
   "f225597751185044": "Einen Prompt automatisch in einem Intervall, zu einer festen Uhrzeit, einmal zu einem bestimmten Datum oder beim Aufruf eines Webhooks ausführen.",
   "fa1c2d60bf41ddc8": "Verbinde diese Umgebung erneut, bevor du speicherst.",
   "28cb9f31f17a303f": "Diese geplante Aufgabe existiert nicht mehr.",
-  "5a3f881a6bc1c4ff": "Neuen Worktree erstellen",
-  "3b91d2c532294f88": "Projekt-Checkout verwenden",
-  "08dfe6dcf5ae8c40": "Bestimmten Checkout verwenden",
   "038b86fd8ba9a6aa": "Diese Aufgabe verwendet ein veraltetes Intervall unter einer Minute. Beim Speichern wird es auf mindestens eine Minute gesetzt.",
   "2f3f300a16007bd8": "Zeitplan",
   "ce1b005dfc83db03": "Zu einer Uhrzeit",
@@ -12222,5 +12219,7 @@
   "c13842e156133e16": "{window} {percent}% left",
   "12341925a4199132": "{window} {percent}% left, resets {reset}",
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
-  "cb0852f8e19d3e46": "{provider}: {windows}"
+  "cb0852f8e19d3e46": "{provider}: {windows}",
+  "810e69d8207012d8": "No matching models.",
+  "d6d9fc563f9c484e": "in project"
 }

@@ -110,9 +110,11 @@ function PickerWithPermissions() {
         <PopoverPopup {...composerMenuProps}>
           <ComposerPickerFooter
             traits={null}
-            runtimeMode={mode}
-            runtimeModeOptions={options}
-            onRuntimeModeChange={setMode}
+            permissions={{
+              runtimeMode: mode,
+              runtimeModeOptions: options,
+              onRuntimeModeChange: setMode,
+            }}
           />
         </PopoverPopup>
       </Popover>
