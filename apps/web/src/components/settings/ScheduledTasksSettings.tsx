@@ -4,6 +4,9 @@ import { AsyncResult } from "effect/reactivity";
 import {
   Clock3Icon,
   CopyIcon,
+  FolderGit2Icon,
+  FolderGitIcon,
+  FolderIcon,
   InboxIcon,
   MoreHorizontalIcon,
   PencilIcon,
@@ -22,8 +25,11 @@ import type {
   ScheduledTaskSchedule,
   ScheduledTaskUpsertInput,
   ScheduledTaskWebhookDeliverySummary,
+  ServerProvider,
+  ProviderOptionSelection,
   ThreadId,
 } from "@t3tools/contracts";
+import { createModelSelection } from "@t3tools/shared/model";
 import {
   DEFAULT_WEBHOOK_PROMPT,
   emptyWebhookFilterDraft,
@@ -100,7 +106,24 @@ import { Label } from "../ui/label";
 import { Menu, MenuTrigger, MenuPopup, MenuItem, MenuSeparator } from "../ui/menu";
 import { ToggleGroup, Toggle } from "../ui/toggle-group";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "../ui/empty";
+import { ComposerContextLabel } from "../ComposerContextLabel";
+import { ComposerSelectControl } from "../chat/ComposerControl";
+import { ComposerSurface } from "../chat/ComposerSurface";
+import {
+  ComposerPromptEditorTiptap as ComposerPromptEditor,
+  type ComposerPromptEditorHandle,
+} from "../ComposerPromptEditorTiptap";
+import { EMPTY_COMPOSER_CONTEXT_RECORDS } from "../composerContextPresentation";
+import { resolveProviderSkillsForCwd } from "@t3tools/client-runtime/providerSkills";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
+import { ComposerContextPermissions } from "../ComposerContextPermissions";
+import { resolveCompatibleRuntimeMode } from "../chat/runtimeModeConfig";
+import { readPromptUltrathink, type TraitsSelectionInput } from "../chat/TraitsPicker";
+import {
+  ComposerEffortColumn,
+  ComposerPickerFooter,
+  describeComposerEffort,
+} from "../chat/ComposerModelEffort";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -116,15 +139,13 @@ import {
 import { Input } from "../ui/input";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
-import { Textarea } from "../ui/textarea";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import {
-  SettingsPageContainer,
-  SettingsRow,
-  SettingsSection,
-  SETTINGS_PICKER_TRIGGER_CLASSNAME,
-} from "./settingsLayout";
+import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
+
+const NO_PROMPT_SKILLS: ServerProvider["skills"] = [];
+
+function noop() {}
 
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -134,6 +155,12 @@ const WORKSPACE_MODE_LABELS: Record<WorkspaceMode, string> = {
   worktree: "Create a new worktree",
   root: "Use the project checkout",
   existing_worktree: "Use a specific checkout",
+};
+
+const WORKSPACE_MODE_ICONS: Record<WorkspaceMode, typeof FolderIcon> = {
+  worktree: FolderGit2Icon,
+  root: FolderIcon,
+  existing_worktree: FolderGitIcon,
 };
 
 const EMPTY_DRAFT: DraftState = {
@@ -1128,7 +1155,7 @@ function ScheduledTaskEditorDialog({
       }}
     >
       {/* The form owns the draft so a keystroke re-renders it, not the dialog chrome. */}
-      <DialogPopup className="max-w-xl">
+      <DialogPopup className="max-w-2xl">
         <ScheduledTaskEditorForm
           initialEnvironmentId={initialEnvironmentId}
           task={task}
@@ -1146,29 +1173,23 @@ function ScheduledTaskDestination({
   threadId,
 }: {
   readonly environmentId: EnvironmentId;
-  readonly threadId: ThreadId | null;
+  readonly threadId: ThreadId;
 }) {
-  const ref = threadId === null ? null : scopeThreadRef(environmentId, threadId);
+  const ref = scopeThreadRef(environmentId, threadId);
   const shell = useThreadShell(ref);
   // The shell can omit older settled threads; their family read still carries the title.
   const family = useEnvironmentQuery(
-    ref !== null && shell === null ? threadFamilies.familyAtom(environmentId, ref.threadId) : null,
+    shell === null ? threadFamilies.familyAtom(environmentId, threadId) : null,
   );
   const thread = shell ?? family.data?.threads.find((row) => row.id === threadId);
   return (
     <Field label="Destination">
-      {ref === null ? (
-        <p className="text-sm text-muted-foreground">
-          Each run starts a new thread with the workspace and model below.
+      <div className="space-y-1 text-sm">
+        <p className="wrap-anywhere">{thread?.title.trim() || `Thread ${threadId}`}</p>
+        <p className="text-muted-foreground">
+          Each run continues this conversation, in its workspace and with its current model.
         </p>
-      ) : (
-        <div className="space-y-1 text-sm">
-          <p className="wrap-anywhere">{thread?.title.trim() || `Thread ${ref.threadId}`}</p>
-          <p className="text-muted-foreground">
-            Each run continues this conversation, in its workspace and with its current model.
-          </p>
-        </div>
-      )}
+      </div>
     </Field>
   );
 }
@@ -1263,6 +1284,54 @@ function ScheduledTaskEditorForm({
     activeInstanceId,
     activeModel,
   );
+  const activeEntry = instanceEntries.find((entry) => entry.instanceId === activeInstanceId);
+  const modelSelection =
+    activeSelection !== null &&
+    draft.baseModelSelection !== null &&
+    draft.baseModelSelection.instanceId === activeSelection.instanceId &&
+    draft.baseModelSelection.model === activeSelection.model
+      ? draft.baseModelSelection
+      : activeSelection;
+  const supportedRuntimeModes = activeEntry?.snapshot.supportedRuntimeModes;
+  const { mode: runtimeMode } = resolveCompatibleRuntimeMode(
+    draft.runtimeMode,
+    supportedRuntimeModes,
+  );
+  const WorkspaceModeIcon = WORKSPACE_MODE_ICONS[draft.workspaceMode];
+  const selectModel = (
+    instanceId: ProviderInstanceId,
+    model: string,
+    options: ReadonlyArray<ProviderOptionSelection> | undefined,
+  ) =>
+    setDraft((current) => ({
+      ...current,
+      modelKey: `${instanceId}:${model}`,
+      baseModelSelection: createModelSelection(instanceId, model, options),
+    }));
+  const promptEditorRef = useRef<ComposerPromptEditorHandle>(null);
+  const [promptCursor, setPromptCursor] = useState(() => draft.prompt.length);
+  const promptSkills = activeEntry
+    ? resolveProviderSkillsForCwd(activeEntry.snapshot, selectedProject?.workspaceRoot)
+    : NO_PROMPT_SKILLS;
+  const editPrompt = (edit: (prompt: string) => string) =>
+    setDraft((current) => ({ ...current, prompt: edit(current.prompt) }));
+  const promptUltrathink = readPromptUltrathink(draft.prompt);
+  const traitsInput: TraitsSelectionInput | null =
+    activeEntry && modelSelection
+      ? {
+          provider: activeEntry.driverKind,
+          instanceId: modelSelection.instanceId,
+          models: activeEntry.models,
+          model: modelSelection.model,
+          promptUltrathink,
+          onPromptEdit: editPrompt,
+          modelOptions: modelSelection.options ?? [],
+          planModeEnabled: settings.planModeEnabled,
+          onModelOptionsChange: (options) =>
+            selectModel(modelSelection.instanceId, modelSelection.model, options),
+        }
+      : null;
+  const effort = describeComposerEffort(traitsInput, settings.effortDisplay, "sm");
 
   const reportFailure = (title: string, error: unknown) => {
     toastManager.add(
@@ -1284,12 +1353,11 @@ function ScheduledTaskEditorForm({
       tasksQuery.data === null
     )
       return;
-    const selection = activeSelection;
     if (
       !draft.title.trim() ||
       !draft.prompt.trim() ||
       !projects.some((project) => project.id === selectedProjectId) ||
-      selection === null
+      modelSelection === null
     ) {
       reportFailure("Scheduled task is incomplete", "Add a title, prompt, project, and model.");
       return;
@@ -1332,12 +1400,6 @@ function ScheduledTaskEditorForm({
       reportFailure("Checkout path is required", "Enter the path of the checkout to run in.");
       return;
     }
-    const modelSelection =
-      draft.baseModelSelection !== null &&
-      draft.baseModelSelection.instanceId === selection.instanceId &&
-      draft.baseModelSelection.model === selection.model
-        ? draft.baseModelSelection
-        : selection;
     const workspaceStrategy: OrchestrationV2ThreadLaunchWorkspaceStrategy =
       draft.workspaceMode === "root"
         ? { type: "root" }
@@ -1358,10 +1420,10 @@ function ScheduledTaskEditorForm({
       threadId: draft.threadId ? (draft.threadId as ThreadId) : null,
       workspaceStrategy,
       modelSelection,
-      // Tasks have no mode picker; a mode above the administrator's ceiling would fail every run.
+      // A mode above the administrator's ceiling would fail every run.
       runtimeMode:
-        clampManagedRuntimeMode(environment?.serverConfig?.managedPolicy, draft.runtimeMode) ??
-        draft.runtimeMode,
+        clampManagedRuntimeMode(environment?.serverConfig?.managedPolicy, runtimeMode) ??
+        runtimeMode,
       interactionMode: draft.interactionMode,
       creationSource: "web",
     };
@@ -1396,68 +1458,6 @@ function ScheduledTaskEditorForm({
           {!connected ? (
             <p className="text-sm text-destructive">Reconnect this environment before saving.</p>
           ) : null}
-          <Field label="Runs on" htmlFor="scheduled-task-environment">
-            <Select
-              value={environmentId}
-              disabled={task !== null || saving}
-              onValueChange={(id) => {
-                const next = connectedEnvironments.find((entry) => entry.environmentId === id);
-                if (!next) return;
-                setEnvironmentId(next.environmentId);
-                setDraft((current) => ({
-                  ...current,
-                  projectId: defaultScheduledTaskProjectId(projectsOn(next.environmentId), scope),
-                  modelKey: "",
-                  baseModelSelection: null,
-                  baseRef: "main",
-                  startFromOrigin: true,
-                  existingWorktreePath: "",
-                }));
-              }}
-            >
-              <SelectTrigger id="scheduled-task-environment" size="sm">
-                <SelectValue>
-                  <span className="flex items-center gap-2">
-                    <EnvironmentMachineIcon
-                      kind={resolveEnvironmentMachineKind(environment?.serverConfig ?? null)}
-                      className="size-4"
-                    />
-                    {environment?.label ?? "Unavailable environment"}
-                  </span>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectPopup>
-                {connectedEnvironments.map((entry) => {
-                  const { secondary } = settingsScopeEnvironmentLabels(
-                    entry,
-                    connectedEnvironments,
-                  );
-                  return (
-                    <SelectItem
-                      key={entry.environmentId}
-                      value={entry.environmentId}
-                      label={entry.label}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <EnvironmentMachineIcon
-                          kind={resolveEnvironmentMachineKind(entry.serverConfig)}
-                          className="size-4"
-                        />
-                        <span className="min-w-0">
-                          <span className="block truncate">{entry.label}</span>
-                          {secondary ? (
-                            <span className="block max-w-72 truncate text-xs text-muted-foreground">
-                              {secondary}
-                            </span>
-                          ) : null}
-                        </span>
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectPopup>
-            </Select>
-          </Field>
           {tasksQuery.error ? (
             <p className="text-sm text-destructive" role="status">
               {tasksQuery.error}
@@ -1468,31 +1468,26 @@ function ScheduledTaskEditorForm({
               This scheduled task no longer exists.
             </p>
           ) : null}
+
           <Field label="Name" htmlFor="scheduled-task-title">
-            <Input
-              id="scheduled-task-title"
-              placeholder="e.g. Check for Sentry issues"
-              value={draft.title}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, title: event.target.value }))
-              }
-            />
-          </Field>
-
-          <ScheduledTaskDestination
-            environmentId={environmentId}
-            threadId={draft.threadId ? (draft.threadId as ThreadId) : null}
-          />
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Project" htmlFor="scheduled-task-project">
+            <div className="flex items-center gap-2">
+              <Input
+                id="scheduled-task-title"
+                className="min-w-0 flex-1"
+                placeholder="e.g. Check for Sentry issues"
+                value={draft.title}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, title: event.target.value }))
+                }
+              />
+              <span className="shrink-0 text-sm text-muted-foreground">in project</span>
               <Select
                 value={selectedProjectId}
                 onValueChange={(projectId) =>
                   setDraft((current) => ({ ...current, projectId: projectId ?? "" }))
                 }
               >
-                <SelectTrigger size="sm" id="scheduled-task-project">
+                <SelectTrigger aria-label="Project" className="w-auto max-w-48 shrink-0">
                   <SelectValue placeholder="Select a project">{selectedProject?.title}</SelectValue>
                 </SelectTrigger>
                 <SelectPopup>
@@ -1513,92 +1508,212 @@ function ScheduledTaskEditorForm({
                   ))}
                 </SelectPopup>
               </Select>
-            </Field>
-
-            <Field label="Workspace" htmlFor="scheduled-task-workspace">
-              <Select
-                value={draft.workspaceMode}
-                onValueChange={(value) =>
-                  setDraft((current) => ({ ...current, workspaceMode: value as WorkspaceMode }))
-                }
-              >
-                <SelectTrigger size="sm" id="scheduled-task-workspace">
-                  <SelectValue>{WORKSPACE_MODE_LABELS[draft.workspaceMode]}</SelectValue>
-                </SelectTrigger>
-                <SelectPopup>
-                  <SelectItem value="worktree">Create a new worktree</SelectItem>
-                  <SelectItem value="root">Use the project checkout</SelectItem>
-                  <SelectItem value="existing_worktree">Use a specific checkout</SelectItem>
-                </SelectPopup>
-              </Select>
-            </Field>
-          </div>
-
-          {draft.workspaceMode === "worktree" ? (
-            <Field label="Base branch" htmlFor="scheduled-task-base-ref">
-              <WorktreeBaseBranchPicker
-                key={`${environmentId}:${selectedProjectId}`}
-                id="scheduled-task-base-ref"
-                environmentId={environmentId}
-                cwd={selectedProject?.workspaceRoot ?? null}
-                value={draft.baseRef}
-                onValueChange={(baseRef) => setDraft((current) => ({ ...current, baseRef }))}
-                startFromOrigin={draft.startFromOrigin}
-                onStartFromOriginChange={(startFromOrigin) =>
-                  setDraft((current) => ({ ...current, startFromOrigin }))
-                }
-                disabled={saving || !connected}
-              />
-            </Field>
-          ) : null}
-          {draft.workspaceMode === "existing_worktree" ? (
-            <Field label="Checkout path" htmlFor="scheduled-task-checkout">
-              <Input
-                id="scheduled-task-checkout"
-                value={draft.existingWorktreePath}
-                placeholder="/path/to/checkout"
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    existingWorktreePath: resolvePastedPath(
-                      current.existingWorktreePath,
-                      event.target.value,
-                    ),
-                  }))
-                }
-              />
-            </Field>
-          ) : null}
-
-          <Field label="Prompt" htmlFor="scheduled-task-prompt">
-            <Textarea
-              id="scheduled-task-prompt"
-              className="max-h-64 overflow-y-auto"
-              placeholder="What should the agent do each time this runs?"
-              value={draft.prompt}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, prompt: event.target.value }))
-              }
-            />
+            </div>
           </Field>
 
-          <Field label="Model">
-            <div>
-              <ProviderModelPicker
-                environmentId={environmentId}
-                disabled={saving || !connected}
-                activeInstanceId={activeInstanceId}
-                model={activeModel}
-                lockedProvider={null}
-                instanceEntries={instanceEntries}
-                modelOptionsByInstance={modelOptionsByInstance}
-                isComposerOwned={false}
-                triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
-                onInstanceModelChange={(instanceId, model) =>
-                  setDraft((current) => ({ ...current, modelKey: `${instanceId}:${model}` }))
-                }
-              />
-            </div>
+          {draft.threadId ? (
+            <ScheduledTaskDestination
+              environmentId={environmentId}
+              threadId={draft.threadId as ThreadId}
+            />
+          ) : null}
+
+          <Field label="Prompt">
+            <ComposerSurface.Shell contextRow>
+              <ComposerSurface.Host>
+                <ComposerSurface.Main>
+                  <div className="rounded-3xl">
+                    <div className="px-4 pt-3.5 pb-2 sm:pt-4">
+                      <ComposerPromptEditor
+                        ariaLabel="Prompt"
+                        editorRef={promptEditorRef}
+                        richTextEnabled={settings.composerRichTextEnabled}
+                        value={draft.prompt}
+                        cursor={promptCursor}
+                        contextRecords={EMPTY_COMPOSER_CONTEXT_RECORDS}
+                        skills={promptSkills}
+                        disabled={saving}
+                        placeholder="What should the agent do each time this runs?"
+                        className="min-h-[calc(5lh+--spacing(2))]"
+                        onChange={(prompt, cursor) => {
+                          setPromptCursor(cursor);
+                          setDraft((current) => ({ ...current, prompt }));
+                        }}
+                        onPaste={noop}
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-wrap items-center gap-0.5 px-2 pb-2">
+                      <ProviderModelPicker
+                        environmentId={environmentId}
+                        disabled={saving || !connected}
+                        activeInstanceId={activeInstanceId}
+                        model={activeModel}
+                        lockedProvider={null}
+                        instanceEntries={instanceEntries}
+                        modelOptionsByInstance={modelOptionsByInstance}
+                        isComposerOwned={false}
+                        popupAlign="start"
+                        triggerClassName="group/model-trigger min-w-13 data-popup-open:bg-accent data-popup-open:text-foreground"
+                        triggerSuffix={effort.suffix}
+                        triggerDetail={effort.detail}
+                        effortColumn={<ComposerEffortColumn traits={traitsInput} />}
+                        footer={<ComposerPickerFooter traits={traitsInput} />}
+                        onInstanceModelChange={(instanceId, model) =>
+                          selectModel(instanceId, model, undefined)
+                        }
+                      />
+                    </div>
+                  </div>
+                </ComposerSurface.Main>
+              </ComposerSurface.Host>
+              <div className="relative z-0">
+                <ComposerSurface.ContextStrip className="gap-1 text-xs font-normal text-foreground/70 dark:text-muted-foreground">
+                  <Select
+                    value={environmentId}
+                    disabled={task !== null || saving}
+                    onValueChange={(id) => {
+                      const next = connectedEnvironments.find(
+                        (entry) => entry.environmentId === id,
+                      );
+                      if (!next) return;
+                      setEnvironmentId(next.environmentId);
+                      setDraft((current) => ({
+                        ...current,
+                        projectId: defaultScheduledTaskProjectId(
+                          projectsOn(next.environmentId),
+                          scope,
+                        ),
+                        modelKey: "",
+                        baseModelSelection: null,
+                        baseRef: "main",
+                        startFromOrigin: true,
+                        existingWorktreePath: "",
+                      }));
+                    }}
+                  >
+                    <ComposerSelectControl
+                      size="xs"
+                      aria-label="Runs on"
+                      className="min-w-0 shrink"
+                    >
+                      <EnvironmentMachineIcon
+                        kind={resolveEnvironmentMachineKind(environment?.serverConfig ?? null)}
+                        className="size-3"
+                      />
+                      <ComposerContextLabel>
+                        <SelectValue>{environment?.label ?? "Unavailable environment"}</SelectValue>
+                      </ComposerContextLabel>
+                    </ComposerSelectControl>
+                    <SelectPopup alignItemWithTrigger={false}>
+                      {connectedEnvironments.map((entry) => {
+                        const { secondary } = settingsScopeEnvironmentLabels(
+                          entry,
+                          connectedEnvironments,
+                        );
+                        return (
+                          <SelectItem
+                            key={entry.environmentId}
+                            value={entry.environmentId}
+                            label={entry.label}
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <EnvironmentMachineIcon
+                                kind={resolveEnvironmentMachineKind(entry.serverConfig)}
+                                className="size-4"
+                              />
+                              <span className="min-w-0">
+                                <span className="block truncate">{entry.label}</span>
+                                {secondary ? (
+                                  <span className="block max-w-72 truncate text-xs text-muted-foreground">
+                                    {secondary}
+                                  </span>
+                                ) : null}
+                              </span>
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectPopup>
+                  </Select>
+                  <Select
+                    value={draft.workspaceMode}
+                    onValueChange={(value) =>
+                      setDraft((current) => ({ ...current, workspaceMode: value as WorkspaceMode }))
+                    }
+                  >
+                    <ComposerSelectControl
+                      size="xs"
+                      aria-label="Workspace"
+                      className="min-w-0 shrink"
+                    >
+                      <WorkspaceModeIcon className="size-3" />
+                      <ComposerContextLabel>
+                        <SelectValue>{WORKSPACE_MODE_LABELS[draft.workspaceMode]}</SelectValue>
+                      </ComposerContextLabel>
+                    </ComposerSelectControl>
+                    <SelectPopup alignItemWithTrigger={false}>
+                      {(["worktree", "root", "existing_worktree"] as const).map((mode) => {
+                        const Icon = WORKSPACE_MODE_ICONS[mode];
+                        return (
+                          <SelectItem key={mode} value={mode} label={WORKSPACE_MODE_LABELS[mode]}>
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <Icon className="size-3 shrink-0" />
+                              <span className="min-w-0 truncate">
+                                {WORKSPACE_MODE_LABELS[mode]}
+                              </span>
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectPopup>
+                  </Select>
+                  {draft.workspaceMode === "worktree" ? (
+                    <WorktreeBaseBranchPicker
+                      key={`${environmentId}:${selectedProjectId}`}
+                      id="scheduled-task-base-ref"
+                      environmentId={environmentId}
+                      cwd={selectedProject?.workspaceRoot ?? null}
+                      value={draft.baseRef}
+                      onValueChange={(baseRef) => setDraft((current) => ({ ...current, baseRef }))}
+                      startFromOrigin={draft.startFromOrigin}
+                      onStartFromOriginChange={(startFromOrigin) =>
+                        setDraft((current) => ({ ...current, startFromOrigin }))
+                      }
+                      disabled={saving || !connected}
+                    />
+                  ) : null}
+                  {draft.workspaceMode === "existing_worktree" ? (
+                    <input
+                      id="scheduled-task-checkout"
+                      aria-label="Checkout path"
+                      className="h-7 min-w-0 flex-1 rounded-(--control-radius) bg-transparent px-1.75 font-mono text-foreground/80 outline-none placeholder:text-muted-foreground/60 hover:bg-accent focus-visible:bg-accent sm:h-6"
+                      value={draft.existingWorktreePath}
+                      placeholder="/path/to/checkout"
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          existingWorktreePath: resolvePastedPath(
+                            current.existingWorktreePath,
+                            event.target.value,
+                          ),
+                        }))
+                      }
+                    />
+                  ) : null}
+                  {draft.threadId ? null : (
+                    <ComposerContextPermissions
+                      environmentId={environmentId}
+                      runtimeMode={draft.runtimeMode}
+                      supportedRuntimeModes={supportedRuntimeModes}
+                      onRuntimeModeChange={(mode) =>
+                        setDraft((current) => ({ ...current, runtimeMode: mode }))
+                      }
+                      disabled={saving || !connected}
+                    />
+                  )}
+                </ComposerSurface.ContextStrip>
+              </div>
+            </ComposerSurface.Shell>
           </Field>
 
           <div className="space-y-3">
@@ -1859,7 +1974,12 @@ function ScheduledTaskEditorForm({
             ) : draft.scheduleMode === "fixed" ? (
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="scheduled-task-time">Run at</Label>
+                  <label
+                    htmlFor="scheduled-task-time"
+                    className="shrink-0 text-sm text-muted-foreground"
+                  >
+                    Run at
+                  </label>
                   <Input
                     type="time"
                     id="scheduled-task-time"
@@ -1870,7 +1990,7 @@ function ScheduledTaskEditorForm({
                       setDraft((current) => ({ ...current, timeOfDay: event.target.value }))
                     }
                   />
-                  <span className="text-xs text-muted-foreground">on</span>
+                  <span className="text-sm text-muted-foreground">on</span>
                 </div>
                 <ToggleGroup
                   multiple
@@ -1895,7 +2015,12 @@ function ScheduledTaskEditorForm({
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <Label htmlFor="scheduled-task-interval">Run every</Label>
+                <label
+                  htmlFor="scheduled-task-interval"
+                  className="shrink-0 text-sm text-muted-foreground"
+                >
+                  Run every
+                </label>
                 <Input
                   type="number"
                   id="scheduled-task-interval"
@@ -1908,29 +2033,28 @@ function ScheduledTaskEditorForm({
                     setDraft((current) => ({ ...current, intervalMinutes: event.target.value }))
                   }
                 />
-                <span className="text-xs text-muted-foreground">minutes</span>
+                <span className="text-sm text-muted-foreground">minutes</span>
               </div>
             )}
-          </div>
-
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0 space-y-1">
-              <Label htmlFor="scheduled-task-enabled">Enabled</Label>
-              <p id="scheduled-task-enabled-description" className="text-sm text-muted-foreground">
-                Disabled tasks stay saved but do not run.
-              </p>
-            </div>
-            <Switch
-              id="scheduled-task-enabled"
-              aria-describedby="scheduled-task-enabled-description"
-              checked={draft.enabled}
-              onCheckedChange={(enabled) => setDraft((current) => ({ ...current, enabled }))}
-            />
           </div>
         </fieldset>
       </DialogPanel>
 
       <DialogFooter>
+        <Tooltip>
+          <TooltipTrigger
+            render={<div className="flex items-center gap-2 max-sm:justify-center sm:me-auto" />}
+          >
+            <Switch
+              id="scheduled-task-enabled"
+              disabled={saving}
+              checked={draft.enabled}
+              onCheckedChange={(enabled) => setDraft((current) => ({ ...current, enabled }))}
+            />
+            <Label htmlFor="scheduled-task-enabled">Enabled</Label>
+          </TooltipTrigger>
+          <TooltipPopup>Disabled tasks stay saved but do not run.</TooltipPopup>
+        </Tooltip>
         <DialogClose render={<Button variant="outline" size="sm" disabled={saving} />}>
           Cancel
         </DialogClose>
