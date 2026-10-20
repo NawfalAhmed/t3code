@@ -1,6 +1,6 @@
 import type { EnvironmentId } from "@t3tools/contracts";
 import { useGT, useMessages } from "gt-react";
-import { ChevronDownIcon, GitBranchIcon } from "lucide-react";
+import { GitBranchIcon } from "lucide-react";
 import { useState } from "react";
 
 import { usePaginatedBranches } from "../state/queries";
@@ -8,9 +8,9 @@ import { useEnvironmentQuery } from "../state/query";
 import { useAtomCommand } from "../state/use-atom-command";
 import { vcsEnvironment } from "../state/vcs";
 import { BranchPicker, BranchPickerRefItem } from "./BranchPicker";
+import { ComposerControl } from "./chat/ComposerControl";
 import { resolveBranchTriggerLabel, sanitizeNewRefName } from "./BranchToolbar.logic";
 import { MiddleTruncate } from "./ui/middle-truncate";
-import { Button } from "./ui/button";
 import { ComboboxTrigger } from "./ui/combobox";
 
 export function WorktreeBaseBranchPicker({
@@ -129,13 +129,13 @@ export function WorktreeBaseBranchPicker({
     >
       <ComboboxTrigger
         id={id}
+        aria-label={gt("Base branch")}
         disabled={disabled || !cwd}
-        render={<Button variant="outline" size="sm" />}
-        className="w-full justify-between "
+        render={<ComposerControl size="xs" />}
+        className="min-w-0 max-w-60 shrink"
       >
-        <GitBranchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-        <MiddleTruncate value={label} className="flex-1 text-left" />
-        <ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground" />
+        <GitBranchIcon className="size-3" />
+        <MiddleTruncate value={label} className="min-w-0 flex-1 text-left" />
       </ComboboxTrigger>
     </BranchPicker>
   );

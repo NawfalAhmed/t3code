@@ -9925,9 +9925,6 @@
   "f225597751185044": "Ejecuta un prompt automáticamente en un intervalo, a una hora fija, una vez en una fecha concreta o cuando se llama a un webhook.",
   "fa1c2d60bf41ddc8": "Vuelve a conectar este entorno antes de guardar.",
   "28cb9f31f17a303f": "Esta tarea programada ya no existe.",
-  "5a3f881a6bc1c4ff": "Crear un worktree nuevo",
-  "3b91d2c532294f88": "Usar el checkout del proyecto",
-  "08dfe6dcf5ae8c40": "Usar un checkout concreto",
   "038b86fd8ba9a6aa": "Esta tarea usa un intervalo antiguo de menos de un minuto. Al guardar se actualiza a un minuto como mínimo.",
   "2f3f300a16007bd8": "Programación",
   "ce1b005dfc83db03": "A una hora",
@@ -12996,5 +12993,7 @@
   "c13842e156133e16": "{window} {percent}% left",
   "12341925a4199132": "{window} {percent}% left, resets {reset}",
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
-  "cb0852f8e19d3e46": "{provider}: {windows}"
+  "cb0852f8e19d3e46": "{provider}: {windows}",
+  "810e69d8207012d8": "No matching models.",
+  "d6d9fc563f9c484e": "in project"
 }

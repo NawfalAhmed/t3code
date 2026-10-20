@@ -9927,9 +9927,6 @@
   "f225597751185044": "Exécute un prompt automatiquement à intervalle régulier, à heure fixe, une fois à une date donnée, ou à l’appel d’un webhook.",
   "fa1c2d60bf41ddc8": "Reconnectez cet environnement avant d’enregistrer.",
   "28cb9f31f17a303f": "Cette tâche planifiée n’existe plus.",
-  "5a3f881a6bc1c4ff": "Créer un nouveau worktree",
-  "3b91d2c532294f88": "Utiliser le checkout du projet",
-  "08dfe6dcf5ae8c40": "Utiliser un checkout précis",
   "038b86fd8ba9a6aa": "Cette tâche utilise un ancien intervalle inférieur à une minute. L’enregistrer le porte à au moins une minute.",
   "2f3f300a16007bd8": "Planification",
   "ce1b005dfc83db03": "À une heure",
@@ -13001,5 +12998,7 @@
   "c13842e156133e16": "{window} {percent}% left",
   "12341925a4199132": "{window} {percent}% left, resets {reset}",
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
-  "cb0852f8e19d3e46": "{provider}: {windows}"
+  "cb0852f8e19d3e46": "{provider}: {windows}",
+  "810e69d8207012d8": "No matching models.",
+  "d6d9fc563f9c484e": "in project"
 }

@@ -9937,9 +9937,6 @@
   "f225597751185044": "Run a prompt automatically on an interval, at a fixed time, once at a set date, or when a webhook is called.",
   "fa1c2d60bf41ddc8": "Reconnect this environment before saving.",
   "28cb9f31f17a303f": "This scheduled task no longer exists.",
-  "5a3f881a6bc1c4ff": "Create a new worktree",
-  "3b91d2c532294f88": "Use the project checkout",
-  "08dfe6dcf5ae8c40": "Use a specific checkout",
   "038b86fd8ba9a6aa": "This task uses a legacy interval below one minute. Saving updates it to at least one minute.",
   "2f3f300a16007bd8": "Schedule",
   "ce1b005dfc83db03": "At a time",
@@ -13010,5 +13007,7 @@
   "c13842e156133e16": "{window} {percent}% left",
   "12341925a4199132": "{window} {percent}% left, resets {reset}",
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
-  "cb0852f8e19d3e46": "{provider}: {windows}"
+  "cb0852f8e19d3e46": "{provider}: {windows}",
+  "810e69d8207012d8": "No matching models.",
+  "d6d9fc563f9c484e": "in project"
 }
