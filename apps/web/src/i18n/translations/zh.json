@@ -9549,9 +9549,6 @@
   "f225597751185044": "按间隔、固定时间、指定日期（仅一次）或收到 webhook 时自动运行提示词。",
   "fa1c2d60bf41ddc8": "请重新连接此环境后再保存。",
   "28cb9f31f17a303f": "此定时任务已不存在。",
-  "5a3f881a6bc1c4ff": "创建新工作树",
-  "3b91d2c532294f88": "使用项目工作副本",
-  "08dfe6dcf5ae8c40": "使用指定工作副本",
   "038b86fd8ba9a6aa": "此任务使用旧版间隔，不到一分钟。保存后会调整为至少一分钟。",
   "2f3f300a16007bd8": "定时规则",
   "ce1b005dfc83db03": "固定时间",
@@ -12191,5 +12188,7 @@
   "c13842e156133e16": "{window} {percent}% left",
   "12341925a4199132": "{window} {percent}% left, resets {reset}",
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
-  "cb0852f8e19d3e46": "{provider}: {windows}"
+  "cb0852f8e19d3e46": "{provider}: {windows}",
+  "810e69d8207012d8": "No matching models.",
+  "d6d9fc563f9c484e": "in project"
 }
