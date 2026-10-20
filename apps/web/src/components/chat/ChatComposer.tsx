@@ -49,7 +49,6 @@ import {
 import type { EnvironmentConnectionPresentation } from "@t3tools/client-runtime/connection";
 import { settlePromise, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import * as Schema from "effect/Schema";
-import { formatComposerModelMention } from "@t3tools/client-runtime/composer-model-mentions";
 import { isPasteAsTextShortcut } from "@t3tools/client-runtime/text-paste";
 import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { serializeComposerFileLink } from "@t3tools/shared/composerTrigger";
@@ -212,7 +211,11 @@ import {
 import { CollapsedComposerStopAction, ComposerPrimaryActions } from "./ComposerPrimaryActions";
 import { ComposerFooterPrimaryActions } from "./ComposerFooterControls";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
-import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
+import {
+  resolveComposerMenuActiveItemId,
+  stepComposerMenuHighlight,
+} from "./composerMenuHighlight";
+import { composerModelMentionReplacement } from "./composerModelMentions";
 import { buildPullRequestReferenceContext } from "../pullRequest/pullRequestDetail.logic";
 import { getComposerPromptInjectionState, getComposerReasoningStep } from "./composerProviderState";
 import { readPromptUltrathink } from "./TraitsPicker";
@@ -2076,14 +2079,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     }
     if (item.type === "model") {
       if (trigger.kind !== "path") return;
-      const replacement = `${formatComposerModelMention(item.instanceId, item.model)} `;
-      const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
+      const { rangeStart, rangeEnd, replacement } = composerModelMentionReplacement(
         snapshot.value,
-        trigger.rangeEnd,
-        replacement,
+        trigger,
+        item,
       );
-      const applied = applyPromptReplacement(trigger.rangeStart, replacementRangeEnd, replacement, {
-        expectedText: snapshot.value.slice(trigger.rangeStart, replacementRangeEnd),
+      const applied = applyPromptReplacement(rangeStart, rangeEnd, replacement, {
+        expectedText: snapshot.value.slice(rangeStart, rangeEnd),
       });
       if (applied) {
         setComposerHighlightedItemId(null);
@@ -2121,14 +2123,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   const nudgeComposerMenuHighlight = (key: "ArrowDown" | "ArrowUp") => {
     if (composerMenuItems.length === 0) return;
-    const highlightedIndex = composerMenuItems.findIndex(
-      (item) => item.id === composerHighlightedItemId,
-    );
-    const normalizedIndex = highlightedIndex >= 0 ? highlightedIndex : key === "ArrowDown" ? -1 : 0;
-    const offset = key === "ArrowDown" ? 1 : -1;
-    const nextIndex =
-      (normalizedIndex + offset + composerMenuItems.length) % composerMenuItems.length;
-    const nextItem = composerMenuItems[nextIndex];
+    const nextItem = stepComposerMenuHighlight(composerMenuItems, composerHighlightedItemId, key);
     setComposerHighlightedItemId(nextItem?.id ?? null);
   };
 

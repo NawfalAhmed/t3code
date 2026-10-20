@@ -1,11 +1,29 @@
-import { rankComposerModelMentions } from "@t3tools/client-runtime/composer-model-mentions";
+import {
+  formatComposerModelMention,
+  rankComposerModelMentions,
+} from "@t3tools/client-runtime/composer-model-mentions";
 import type { ProviderInstanceId } from "@t3tools/contracts";
 
+import { type ComposerTrigger, extendReplacementRangeForTrailingSpace } from "../../composer-logic";
 import { isProviderInstancePickerReady, type ProviderInstanceEntry } from "../../providerInstances";
 import type { ComposerCommandItem } from "./ComposerCommandMenu";
 import { getDisplayModelName, type ModelEsque } from "./providerIconUtils";
 
 type ComposerModelItem = Extract<ComposerCommandItem, { type: "model" }>;
+
+/** The text that replaces an `@` query when its model is picked, with the range it covers. */
+export function composerModelMentionReplacement(
+  prompt: string,
+  trigger: ComposerTrigger,
+  item: Pick<ComposerModelItem, "instanceId" | "model">,
+) {
+  const replacement = `${formatComposerModelMention(item.instanceId, item.model)} `;
+  return {
+    rangeStart: trigger.rangeStart,
+    rangeEnd: extendReplacementRangeForTrailingSpace(prompt, trigger.rangeEnd, replacement),
+    replacement,
+  };
+}
 
 export function matchComposerModelItems(input: {
   readonly instanceEntries: ReadonlyArray<ProviderInstanceEntry>;

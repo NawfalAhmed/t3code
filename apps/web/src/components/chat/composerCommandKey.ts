@@ -1,5 +1,6 @@
 import type { ChatComposerProps } from "./ChatComposer";
 import { type ComposerCommandItem } from "./ComposerCommandMenu";
+import { handleComposerMenuKey } from "./composerMenuHighlight";
 import {
   type ComposerDispatchMode,
   resolveComposerDispatchMode,
@@ -226,21 +227,17 @@ export function composerCommandKeyHandler(input: {
       composerMenuOpenRef.current = false;
       return true;
     }
-    if (menuIsActive && (submissionIntent === null || submissionIntent === "foreground")) {
-      const currentItems = composerMenuItemsRef.current;
-      const selectedItem = activeComposerMenuItemRef.current ?? currentItems[0];
-      if (key === "ArrowDown" && currentItems.length > 0) {
-        nudgeComposerMenuHighlight("ArrowDown");
-        return true;
-      }
-      if (key === "ArrowUp" && currentItems.length > 0) {
-        nudgeComposerMenuHighlight("ArrowUp");
-        return true;
-      }
-      if ((key === "Enter" || key === "Tab") && selectedItem) {
-        onSelectComposerItem(selectedItem);
-        return true;
-      }
+    if (
+      menuIsActive &&
+      (submissionIntent === null || submissionIntent === "foreground") &&
+      handleComposerMenuKey(key, {
+        items: composerMenuItemsRef.current,
+        activeItem: activeComposerMenuItemRef.current,
+        nudge: nudgeComposerMenuHighlight,
+        select: onSelectComposerItem,
+      })
+    ) {
+      return true;
     }
     if (
       key === "Tab" &&

@@ -357,7 +357,8 @@ file attachment limits apply.
 
 Type `@` and part of a model or provider name, such as `@opus`, to name that model for the
 agent, for example when delegating. It does not change the thread's model. Join words with
-`:`, `/` or `-`, as in `@opus:opencode`.
+`:`, `/` or `-`, as in `@opus:opencode`. Scheduled task prompts take model mentions too, from
+the models on the machine the task runs on.
 
 Images keep their thumbnail shelf above the text and also get a chip at your cursor, so you can
 say exactly which image you mean. Deleting an image chip leaves the image on the shelf; removing
