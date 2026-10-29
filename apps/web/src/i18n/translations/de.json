@@ -7579,7 +7579,6 @@
   "6287212fed0deec6": "Wie Chat",
   "dc8e85ea0364649c": "Wie Chat (Standard)",
   "81f3a196537bbee0": "Komfortabel (Standard)",
-  "e79e5388f669495f": "Den Denkaufwand im Eingabefeld als Namen, etwa Hoch, oder als Balken anzeigen.",
   "7f0365c7e4e8bcbf": "Anzeige des Aufwands auf Standard zurücksetzen",
   "14bf40f765172a50": "Aufwandsanzeige",
   "0135accf81b68fa9": "Wort (Standard)",
@@ -11849,7 +11848,6 @@
   "717e49895cfee1c7": "breit volle breite spalte layout nachrichten eingabefeld monitor",
   "9d5c7430a7ff76cf": "breit volle breite inline seite rendern diagramm dashboard artefakt zentriert",
   "88365077fd80787b": "anpassen anzeigen ausblenden panel karte umgebung editor skripte branch pull request git änderungen server automatisierungen herkunft nutzung limits 5 stunden wöchentlich kontingent tokens kontextfenster",
-  "d561f74efa5f3920": "reasoning aufwand denken balken grafik wort bezeichnung stufe eingabefeld",
   "6113c17109ee0d57": "latex tex katex gleichungen formeln markdown",
   "8c8364d44fa28d22": "dev nightly latest kanal artwork badge bezeichnung ausblenden keine",
   "2d90635156dfcb5a": "typografie schriftart größe system sans",
@@ -12975,5 +12973,8 @@
   "201490988858b511": "zurückgezogen von {by}",
   "99451a5d2d40440f": "Zurückgezogen von {by}.",
   "3ee30a50b70fffab": "Zurückgezogen von {by}: {reason}",
-  "92e129bf413a1220": "zurückgezogen"
+  "92e129bf413a1220": "zurückgezogen",
+  "8ce867056fa5ad59": "Gauge",
+  "7d08319b2081138c": "Show reasoning effort in the composer as its name, such as High, as bars, or as a gauge.",
+  "2e3c9eeb58ea8b26": "reasoning effort thinking bars graph gauge word label level composer"
 }

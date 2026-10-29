@@ -356,8 +356,8 @@ export type ChatWidth = typeof ChatWidth.Type;
 export const HtmlPreviewWidth = Schema.Literals(["chat", "wide", "full"]);
 export type HtmlPreviewWidth = typeof HtmlPreviewWidth.Type;
 
-/** How the composer shows reasoning effort: the level's name, or rising bars. */
-export const EffortDisplay = Schema.Literals(["label", "bars"]);
+/** How the composer shows reasoning effort: the level's name, rising bars, or a gauge. */
+export const EffortDisplay = Schema.Literals(["label", "bars", "gauge"]);
 export type EffortDisplay = typeof EffortDisplay.Type;
 
 export const ToolCallVisibility = Schema.Literals(["showAll", "hideSuccessful", "hideAll", "zen"]);

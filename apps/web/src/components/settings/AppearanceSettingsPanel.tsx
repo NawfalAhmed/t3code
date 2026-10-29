@@ -90,6 +90,7 @@ const HTML_PREVIEW_WIDTH_LABELS: Record<HtmlPreviewWidth, string> = {
 const EFFORT_DISPLAY_LABELS: Record<EffortDisplay, string> = {
   label: msg("Word", { $context: "show effort as a word" }),
   bars: msg("Bars", { $context: "show effort as bars" }),
+  gauge: msg("Gauge", { $context: "show effort as a gauge" }),
 };
 
 export function AppearanceSettingsPanel() {
@@ -347,7 +348,7 @@ export function AppearanceSettingsPanel() {
         <SettingsRow
           {...searchableSetting("effort-display")}
           description={gt(
-            "Show reasoning effort in the composer as its name, such as High, or as bars.",
+            "Show reasoning effort in the composer as its name, such as High, as bars, or as a gauge.",
           )}
           resetAction={
             settings.effortDisplay !== DEFAULT_UNIFIED_SETTINGS.effortDisplay ? (
@@ -364,7 +365,7 @@ export function AppearanceSettingsPanel() {
               <Select
                 value={settings.effortDisplay}
                 onValueChange={(value) => {
-                  if (value === "bars" || value === "label")
+                  if (value === "bars" || value === "gauge" || value === "label")
                     updateSettings({ effortDisplay: value });
                 }}
               >
@@ -378,6 +379,7 @@ export function AppearanceSettingsPanel() {
                 <SelectPopup align="end" alignItemWithTrigger={false}>
                   <SelectItem value="label">{gt("Word (default)")}</SelectItem>
                   <SelectItem value="bars">{m(EFFORT_DISPLAY_LABELS.bars)}</SelectItem>
+                  <SelectItem value="gauge">{m(EFFORT_DISPLAY_LABELS.gauge)}</SelectItem>
                 </SelectPopup>
               </Select>
             </div>

@@ -7581,7 +7581,6 @@
   "6287212fed0deec6": "Comme la discussion",
   "dc8e85ea0364649c": "Comme la discussion (par défaut)",
   "81f3a196537bbee0": "Confortable (par défaut)",
-  "e79e5388f669495f": "Afficher l’effort de raisonnement dans la zone de saisie par son nom, comme Élevé, ou sous forme de barres.",
   "7f0365c7e4e8bcbf": "Réinitialiser l’affichage de l’effort à la valeur par défaut",
   "14bf40f765172a50": "Affichage de l’effort",
   "0135accf81b68fa9": "Mot (par défaut)",
@@ -11847,7 +11846,6 @@
   "717e49895cfee1c7": "large pleine largeur colonne mise en page messages zone de saisie écran",
   "9d5c7430a7ff76cf": "large pleine largeur intégré page rendu graphique tableau de bord artefact centré",
   "88365077fd80787b": "personnaliser afficher masquer panneau carte environnement éditeur scripts branche pull request modifications git serveurs automatisations lignée utilisation limites 5 heures hebdomadaire quota jetons fenêtre de contexte",
-  "d561f74efa5f3920": "effort de raisonnement réflexion barres graphique mot libellé niveau zone de saisie",
   "6113c17109ee0d57": "latex tex katex équations formules markdown",
   "8c8364d44fa28d22": "dev nightly dernière canal illustration pastille libellé masquer aucun",
   "2d90635156dfcb5a": "typographie famille taille système sans",
@@ -12975,5 +12973,8 @@
   "201490988858b511": "retirée par {by}",
   "99451a5d2d40440f": "Retirée par {by}.",
   "3ee30a50b70fffab": "Retirée par {by} : {reason}",
-  "92e129bf413a1220": "retirée"
+  "92e129bf413a1220": "retirée",
+  "8ce867056fa5ad59": "Gauge",
+  "7d08319b2081138c": "Show reasoning effort in the composer as its name, such as High, as bars, or as a gauge.",
+  "2e3c9eeb58ea8b26": "reasoning effort thinking bars graph gauge word label level composer"
 }

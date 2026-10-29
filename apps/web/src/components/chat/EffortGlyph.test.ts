@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { effortBarHeights, resolveEffortGlyph } from "./EffortGlyph";
+import { effortBarHeights, effortGaugeAngle, resolveEffortGlyph } from "./EffortGlyph";
 
 const descriptor = (ids: ReadonlyArray<string>, promptInjectedValues?: ReadonlyArray<string>) => ({
   id: "effort",
@@ -15,7 +15,6 @@ describe("resolveEffortGlyph", () => {
     ["low", "medium", "high", "xhigh", "max", "ultracode", "ultrathink"],
     ["ultrathink"],
   );
-
   const codex = descriptor(["low", "medium", "high", "xhigh", "max", "ultra"]);
 
   it("fills bars up to the current level and leaves max and workflow levels off the scale", () => {
@@ -74,4 +73,12 @@ describe("effortBarHeights", () => {
       expect(Number.isInteger(step) && step! > 0).toBe(true);
     },
   );
+});
+
+describe("effortGaugeAngle", () => {
+  it("sweeps the needle from left to right and rests off at the arc's start", () => {
+    expect([1, 2, 3, 4].map((filled) => effortGaugeAngle(4, filled))).toEqual([180, 120, 60, 0]);
+    expect(effortGaugeAngle(4, 0)).toBe(210);
+    expect(effortGaugeAngle(1, 1)).toBe(0);
+  });
 });

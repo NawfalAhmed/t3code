@@ -7545,7 +7545,6 @@
   "6287212fed0deec6": "チャットに合わせる",
   "dc8e85ea0364649c": "チャットに合わせる (デフォルト)",
   "81f3a196537bbee0": "標準 (デフォルト)",
-  "e79e5388f669495f": "入力欄での推論レベルの表示を、名前 (High など) またはバーから選択します。",
   "7f0365c7e4e8bcbf": "推論レベルの表示をデフォルトにリセット",
   "14bf40f765172a50": "推論レベルの表示",
   "0135accf81b68fa9": "文字 (デフォルト)",
@@ -11797,7 +11796,6 @@
   "717e49895cfee1c7": "幅 全幅 列 レイアウト メッセージ 入力欄 モニター wide width",
   "9d5c7430a7ff76cf": "幅 全幅 インライン ページ レンダリング グラフ ダッシュボード アーティファクト 中央 wide width",
   "88365077fd80787b": "カスタマイズ 表示 非表示 パネル カード 環境 エディター スクリプト ブランチ プルリクエスト Git 変更 サーバー オートメーション 系譜 使用量 上限 5 時間 週間 クォータ トークン コンテキストウィンドウ panel card",
-  "d561f74efa5f3920": "推論レベル 思考 バー グラフ 単語 ラベル レベル 入力欄 reasoning effort",
   "6113c17109ee0d57": "LaTeX TeX KaTeX 数式 方程式 Markdown latex math",
   "8c8364d44fa28d22": "dev nightly latest チャンネル アートワーク ピル ラベル 非表示 なし channel",
   "2d90635156dfcb5a": "タイポグラフィ フォント ファミリー サイズ システム サンセリフ font",
@@ -12911,5 +12909,8 @@
   "201490988858b511": "{by} が取り下げ",
   "99451a5d2d40440f": "{by} が取り下げました。",
   "3ee30a50b70fffab": "{by} が取り下げました: {reason}",
-  "92e129bf413a1220": "取り下げ済み"
+  "92e129bf413a1220": "取り下げ済み",
+  "8ce867056fa5ad59": "Gauge",
+  "7d08319b2081138c": "Show reasoning effort in the composer as its name, such as High, as bars, or as a gauge.",
+  "2e3c9eeb58ea8b26": "reasoning effort thinking bars graph gauge word label level composer"
 }
