@@ -9,6 +9,7 @@ const spec: ModelReasoningGridSpec = {
     { id: "low", label: "Low" },
     { id: "medium", label: "Medium" },
     { id: "high", label: "High" },
+    { id: "xhigh", label: "XHigh" },
   ],
   rows: [
     {
@@ -30,6 +31,9 @@ function descriptors(serviceTier: string): ReadonlyArray<ProviderOptionDescripto
         { id: "low", label: "Low" },
         { id: "medium", label: "Medium" },
         { id: "high", label: "High" },
+        { id: "xhigh", label: "XHigh" },
+        { id: "max", label: "Max" },
+        { id: "ultra", label: "Ultra" },
       ],
       currentValue: "medium",
     },
@@ -47,7 +51,7 @@ function descriptors(serviceTier: string): ReadonlyArray<ProviderOptionDescripto
 }
 
 describe("buildModelReasoningTriggerDisplay", () => {
-  it.each(["label", "bars"] as const)(
+  it.each(["label", "bars", "gauge"] as const)(
     "shows the selected model and reasoning as %s",
     (effortDisplay) => {
       expect(
@@ -61,7 +65,9 @@ describe("buildModelReasoningTriggerDisplay", () => {
         modelLabel: "GPT-6.1 Sol",
         reasoningLabel: "Medium",
         reasoningGlyph:
-          effortDisplay === "bars" ? { count: 3, filled: 2, special: null, label: "Medium" } : null,
+          effortDisplay !== "label"
+            ? { count: 4, filled: 2, special: null, label: "Medium" }
+            : null,
         showFastModeIcon: false,
       });
     },

@@ -19,7 +19,7 @@ import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { ComposerControl, type ComposerControlSize } from "./ComposerControl";
 import { composerFloatingLayerProps, focusRequestedPermission } from "./composerEventScope";
 import { ComposerPermissionsSection } from "./ComposerFooterControls";
-import { EffortGlyph, resolveEffortGlyph } from "./EffortGlyph";
+import { EffortGauge, EffortGlyph, resolveEffortGlyph } from "./EffortGlyph";
 import type { ModelReasoningGridSpec } from "./ModelReasoningGrid";
 import { ModelReasoningModal, getFastModeControl } from "./ModelReasoningModal";
 import type { PromptUltrathink } from "./TraitsPicker";
@@ -58,7 +58,7 @@ export function buildModelReasoningTriggerDisplay(input: {
   const promptControlsReasoning = (input.promptUltrathink ?? "none") !== "none";
   const reasoningValue = getProviderOptionCurrentValue(reasoningDescriptor);
   const glyph =
-    input.effortDisplay === "bars" &&
+    (input.effortDisplay === "bars" || input.effortDisplay === "gauge") &&
     !promptControlsReasoning &&
     reasoningDescriptor?.type === "select" &&
     typeof reasoningValue === "string"
@@ -153,11 +153,19 @@ export const ModelReasoningPicker = memo(function ModelReasoningPicker(props: {
             )}
           </span>
           {reasoningGlyph ? (
-            <EffortGlyph
-              count={reasoningGlyph.count}
-              filled={reasoningGlyph.filled}
-              size={props.size ?? "sm"}
-            />
+            props.effortDisplay === "gauge" ? (
+              <EffortGauge
+                count={reasoningGlyph.count}
+                filled={reasoningGlyph.filled}
+                size={props.size ?? "sm"}
+              />
+            ) : (
+              <EffortGlyph
+                count={reasoningGlyph.count}
+                filled={reasoningGlyph.filled}
+                size={props.size ?? "sm"}
+              />
+            )
           ) : null}
           {showFastModeIcon ? (
             <>
