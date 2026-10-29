@@ -1,6 +1,8 @@
 import type { ProviderOptionDescriptor } from "@t3tools/contracts";
 import { ZapIcon } from "lucide-react";
 
+import { cn } from "~/lib/utils";
+
 import type { ComposerControlSize } from "./ComposerControl";
 
 const GLYPH_HEIGHT_SM = 14;
@@ -11,15 +13,15 @@ const BASELINE_INSET = 2;
 type SelectDescriptor = Extract<ProviderOptionDescriptor, { type: "select" }>;
 
 // Older servers offer Ultracode as a level. It changes the workflow, so it keeps its name.
-// Max is named too, so the full scale stops short of it.
-const NAMED_LEVELS = new Set(["ultracode", "max"]);
+// Max and Ultra are named too, so the full scale stops short of them.
+const NAMED_LEVELS = new Set(["ultracode", "max", "ultra"]);
 const OFF_LEVELS = new Set(["off", "none"]);
 // More bars than this no longer fit the glyph's height in whole pixels.
 const MAX_BARS = 7;
 
 /**
  * Maps a reasoning select to bars: one per ordinary level, filled up to the current one, with an
- * off level as none filled. Max, prompt-injected and workflow levels are named instead of drawn.
+ * off level as none filled. Max, Ultra, prompt-injected and workflow levels keep their names.
  */
 export function resolveEffortGlyph(descriptor: SelectDescriptor, current: string | null) {
   const special = new Set([...(descriptor.promptInjectedValues ?? []), ...NAMED_LEVELS]);
@@ -103,5 +105,49 @@ export function FastBolt(props: { ultra: boolean }) {
         className="absolute top-0 left-0 size-3 fill-current stroke-(--chat-composer-glass-surface) [paint-order:stroke]"
       />
     </span>
+  );
+}
+
+// Lucide's gauge: a 10-unit arc around (12, 14) from 210° to -30°, and a 5.66-unit needle.
+const GAUGE_ARC_START = "M3.34 19";
+const GAUGE_RADIUS = 10;
+const GAUGE_NEEDLE_LENGTH = 5.66;
+const GAUGE_OFF_ANGLE = 210;
+
+/** The needle sweeps left to right across the levels; off rests it at the arc's start. */
+export function effortGaugeAngle(count: number, filled: number): number {
+  if (filled === 0) return GAUGE_OFF_ANGLE;
+  return count === 1 ? 0 : 180 - (180 * (filled - 1)) / (count - 1);
+}
+
+function gaugePoint(angle: number, radius: number): string {
+  const radians = (angle * Math.PI) / 180;
+  const x = 12 + radius * Math.cos(radians);
+  const y = 14 - radius * Math.sin(radians);
+  return `${x.toFixed(2)} ${y.toFixed(2)}`;
+}
+
+/** Lucide's gauge with the needle at the current level and the arc filled up to it. */
+export function EffortGauge(props: { count: number; filled: number; size?: ComposerControlSize }) {
+  const angle = effortGaugeAngle(props.count, props.filled);
+  const largeArc = GAUGE_OFF_ANGLE - angle > 180 ? 1 : 0;
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      className={cn("shrink-0 text-current", props.size === "xs" ? "size-3" : "size-4")}
+      data-composer-effort-glyph
+      data-composer-control-icon
+    >
+      <path d={`${GAUGE_ARC_START}a10 10 0 1 1 17.32 0`} opacity={0.4} />
+      {props.filled > 0 ? (
+        <path d={`${GAUGE_ARC_START}A10 10 0 ${largeArc} 1 ${gaugePoint(angle, GAUGE_RADIUS)}`} />
+      ) : null}
+      <path d={`M12 14L${gaugePoint(angle, GAUGE_NEEDLE_LENGTH)}`} />
+    </svg>
   );
 }
