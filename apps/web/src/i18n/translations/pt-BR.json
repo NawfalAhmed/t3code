@@ -7350,7 +7350,6 @@
   "92785adb251da88c": "Redefinir a largura do chat para o padrão",
   "4d457bcce0c0e272": "Largura do chat",
   "81f3a196537bbee0": "Confortável (padrão)",
-  "e79e5388f669495f": "Mostra o esforço de raciocínio no editor de mensagens pelo nome, como Alto, ou como barras.",
   "7f0365c7e4e8bcbf": "Redefinir a exibição do esforço para o padrão",
   "14bf40f765172a50": "Exibição do esforço",
   "0135accf81b68fa9": "Palavra (padrão)",
@@ -11441,7 +11440,6 @@
   "d8d6cfd630cff22d": "vermelho verde azul laranja adições exclusões alterações contagens paleta daltonismo",
   "717e49895cfee1c7": "largo largura total coluna layout mensagens editor de mensagens monitor",
   "88365077fd80787b": "personalizar mostrar ocultar painel cartão ambiente editor scripts branch pull request git alterações servidores automações linhagem uso limites 5 horas semanal cota tokens janela de contexto",
-  "d561f74efa5f3920": "esforço de raciocínio pensamento barras gráfico palavra rótulo nível editor de mensagens",
   "6113c17109ee0d57": "latex tex katex equações fórmulas markdown",
   "8c8364d44fa28d22": "dev nightly latest canal arte pílula rótulo ocultar nenhum",
   "2d90635156dfcb5a": "tipografia família tamanho sistema sans",
@@ -12139,5 +12137,8 @@
   "27d76249d09eb69f": "Guia de revisão pronto",
   "faa3bb26abb39c93": "O guia de revisão falhou",
   "b7df38b7d8792d78": "Abrir guia",
-  "9e91e9a77b664e4e": "Não foi possível iniciar um guia de revisão"
+  "9e91e9a77b664e4e": "Não foi possível iniciar um guia de revisão",
+  "8ce867056fa5ad59": "Gauge",
+  "7d08319b2081138c": "Show reasoning effort in the composer as its name, such as High, as bars, or as a gauge.",
+  "2e3c9eeb58ea8b26": "reasoning effort thinking bars graph gauge word label level composer"
 }

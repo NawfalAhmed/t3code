@@ -7356,7 +7356,6 @@
   "92785adb251da88c": "Återställ chattbredd till standard",
   "4d457bcce0c0e272": "Chattbredd",
   "81f3a196537bbee0": "Bekväm (standard)",
-  "e79e5388f669495f": "Visa resonemangsnivån i inmatningsfältet som sitt namn, till exempel Hög, eller som staplar.",
   "7f0365c7e4e8bcbf": "Återställ visning av ansträngning till standard",
   "14bf40f765172a50": "Visning av ansträngning",
   "0135accf81b68fa9": "Ord (standard)",
@@ -11450,7 +11449,6 @@
   "d8d6cfd630cff22d": "röd grön blå orange tillägg borttagningar ändringar antal palett färgblind",
   "717e49895cfee1c7": "bred full bredd kolumn layout meddelanden inmatningsfält skärm",
   "88365077fd80787b": "anpassa visa dölj panel kort miljö redigerare skript gren pull request git ändringar servrar automatiseringar härkomst användning gränser 5 timmar vecka kvot token kontextfönster",
-  "d561f74efa5f3920": "resonemang ansträngning tänkande staplar diagram ord etikett nivå inmatningsfält",
   "6113c17109ee0d57": "latex tex katex ekvationer formler markdown",
   "8c8364d44fa28d22": "dev nightly latest kanal grafik pill etikett dölj ingen",
   "2d90635156dfcb5a": "typografi typsnitt familj storlek system sans",
@@ -12147,5 +12145,8 @@
   "27d76249d09eb69f": "Granskningsguiden är klar",
   "faa3bb26abb39c93": "Granskningsguiden misslyckades",
   "b7df38b7d8792d78": "Öppna guiden",
-  "9e91e9a77b664e4e": "Kunde inte starta en granskningsguide"
+  "9e91e9a77b664e4e": "Kunde inte starta en granskningsguide",
+  "8ce867056fa5ad59": "Gauge",
+  "7d08319b2081138c": "Show reasoning effort in the composer as its name, such as High, as bars, or as a gauge.",
+  "2e3c9eeb58ea8b26": "reasoning effort thinking bars graph gauge word label level composer"
 }
