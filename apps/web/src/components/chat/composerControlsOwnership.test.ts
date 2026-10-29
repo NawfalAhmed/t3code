@@ -8,9 +8,25 @@ const base = {
   planModeUiEnabled: false,
   collapsed: false,
   measuredHiddenBlockCount: 0,
+  permissionsShownInStrip: false,
 };
 
 describe("resolveComposerControlsOwnership", () => {
+  it.each([true, false])("lets the visible strip own permissions with traits=%s", (hasTraits) => {
+    const result = resolveComposerControlsOwnership({
+      ...base,
+      hasTraits,
+      matchesDefault: false,
+      permissionsShownInStrip: true,
+      measuredHiddenBlockCount: 1,
+    });
+    expect(result).toMatchObject({
+      accessDisplay: "hidden",
+      showModeBlock: false,
+      effortOwnsModeShortcut: false,
+      overflowShowsPermissions: false,
+    });
+  });
   it("hides the chip at the default and lets the effort menu answer composer.mode", () => {
     const result = resolveComposerControlsOwnership(base);
     expect(result).toMatchObject({

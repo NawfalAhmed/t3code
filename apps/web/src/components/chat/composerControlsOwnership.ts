@@ -4,8 +4,9 @@
  * The rule: Permissions have exactly one visible home and composer.mode exactly one target.
  */
 export function resolveComposerControlsOwnership(input: {
-  /** Permissions hide while the mode is the default, or while the new-thread strip names it. */
+  /** Permissions hide while the mode is the default. */
   readonly matchesDefault: boolean;
+  readonly permissionsShownInStrip?: boolean;
   /** The model has an effort (traits) menu, which then always holds Permissions. */
   readonly hasTraits: boolean;
   readonly planModeUiEnabled: boolean;
@@ -13,14 +14,16 @@ export function resolveComposerControlsOwnership(input: {
   /** How many trailing blocks the width measurement moved into the overflow menu. */
   readonly measuredHiddenBlockCount: number;
 }) {
-  const accessDisplay = !input.matchesDefault
-    ? input.collapsed
-      ? ("icon" as const)
-      : ("label" as const)
-    : // Without traits there is no effort menu to hold Permissions, so keep an icon.
-      input.hasTraits
-      ? ("hidden" as const)
-      : ("icon" as const);
+  const accessDisplay = input.permissionsShownInStrip
+    ? ("hidden" as const)
+    : !input.matchesDefault
+      ? input.collapsed
+        ? ("icon" as const)
+        : ("label" as const)
+      : // Without traits there is no effort menu to hold Permissions, so keep an icon.
+        input.hasTraits
+        ? ("hidden" as const)
+        : ("icon" as const);
   const showModeBlock = !(accessDisplay === "hidden" && !input.planModeUiEnabled);
   const blockIds = [
     ...(input.hasTraits ? ["traits" as const] : []),
@@ -28,7 +31,7 @@ export function resolveComposerControlsOwnership(input: {
   ];
   const hiddenFor = (count: number) => blockIds.slice(blockIds.length - count);
   const overflowShowsPermissionsFor = (hidden: ReadonlyArray<string>) =>
-    hidden.includes(input.hasTraits ? "traits" : "mode");
+    !input.permissionsShownInStrip && hidden.includes(input.hasTraits ? "traits" : "mode");
   const overflowHasContent = (hidden: ReadonlyArray<string>) =>
     hidden.includes("traits") ||
     (input.planModeUiEnabled && hidden.includes("mode")) ||
@@ -57,7 +60,8 @@ export function resolveComposerControlsOwnership(input: {
      * The effort chip answers composer.mode while the chip is hidden or overflowed, until the
      * effort chip overflows too; then the overflow menu (which holds Permissions) answers it.
      */
-    effortOwnsModeShortcut: (input.matchesDefault || modeHidden) && !traitsHidden,
+    effortOwnsModeShortcut:
+      !input.permissionsShownInStrip && (input.matchesDefault || modeHidden) && !traitsHidden,
     overflowShowsPermissions: overflowShowsPermissionsFor(hiddenBlockIds),
   };
 }
