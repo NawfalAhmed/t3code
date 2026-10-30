@@ -32,18 +32,12 @@ export interface ThreadDetailsUsageInput {
   readonly providerInstanceId: ProviderInstanceId | null;
   readonly providers: readonly ServerProvider[];
   readonly sources: UsageLimitSourceSnapshots;
-  readonly contextWindow: ContextWindowSnapshot | null;
 }
 
-/**
- * The selected provider's limit windows and the thread's context window.
- * Every row reads as room left, so a longer bar always means more headroom.
- */
 export function ThreadDetailsUsage({
   providerInstanceId,
   providers,
   sources,
-  contextWindow,
 }: ThreadDetailsUsageInput) {
   const nowMinute = useNowMinute();
   const now = Date.parse(`${nowMinute}:00Z`);
@@ -57,7 +51,7 @@ export function ThreadDetailsUsage({
     report?.accounts.find((entry) => entry.instanceId === providerInstanceId)?.limits ??
     providers.find((provider) => provider.instanceId === providerInstanceId)?.usageLimits;
   const notice = limits ? limitsNotice(limits) : null;
-  if (!limits && !contextWindow) return null;
+  if (!limits) return null;
 
   return (
     <ThreadDetailsSection
@@ -77,7 +71,6 @@ export function ThreadDetailsUsage({
         {limits && !notice
           ? limits.windows.map((window) => <LimitRow key={window.id} window={window} now={now} />)
           : null}
-        {contextWindow ? <ContextRow usage={contextWindow} spaced={limits !== undefined} /> : null}
       </div>
     </ThreadDetailsSection>
   );
@@ -116,13 +109,12 @@ function LimitRow({
   );
 }
 
-function ContextRow({
-  usage,
-  spaced,
+export function ThreadDetailsContext({
+  contextWindow: usage,
 }: {
-  readonly usage: ContextWindowSnapshot;
-  readonly spaced: boolean;
+  readonly contextWindow: ContextWindowSnapshot | null;
 }) {
+  if (!usage) return null;
   const maxTokens = usage.maxTokens ?? null;
   const left =
     maxTokens !== null && usage.usedPercentage !== null
@@ -130,23 +122,32 @@ function ContextRow({
       : null;
   const used = formatContextWindowTokens(usage.usedTokens);
   return (
-    <UsageRow
-      label="Context"
-      left={left}
-      muted
-      className={cn(spaced && "mt-2")}
-      tooltip={
-        <>
-          {left !== null ? <span className="text-foreground">Context: {left}% left</span> : null}
-          <span className={left !== null ? "text-muted-foreground" : "text-foreground"}>
-            {maxTokens !== null
-              ? `${used} of ${formatContextWindowTokens(maxTokens)} tokens used`
-              : `${used} tokens used`}
-          </span>
-        </>
-      }
-      value={left === null ? used : undefined}
-    />
+    <ThreadDetailsSection
+      headingId="thread-details-context-heading"
+      title="Context"
+      showHeading={false}
+    >
+      <div className="grid grid-cols-[auto_minmax(3rem,1fr)_auto] gap-x-3 text-xs">
+        <UsageRow
+          label="Context"
+          left={left}
+          muted
+          tooltip={
+            <>
+              {left !== null ? (
+                <span className="text-foreground">Context: {left}% left</span>
+              ) : null}
+              <span className={left !== null ? "text-muted-foreground" : "text-foreground"}>
+                {maxTokens !== null
+                  ? `${used} of ${formatContextWindowTokens(maxTokens)} tokens used`
+                  : `${used} tokens used`}
+              </span>
+            </>
+          }
+          value={left === null ? used : undefined}
+        />
+      </div>
+    </ThreadDetailsSection>
   );
 }
 
@@ -157,7 +158,6 @@ function UsageRow({
   tooltip,
   value,
   muted = false,
-  className,
 }: {
   readonly label: string;
   readonly left: number | null;
@@ -165,7 +165,6 @@ function UsageRow({
   /** Replaces the percentage when there is none. */
   readonly value?: string | undefined;
   readonly muted?: boolean;
-  readonly className?: string | undefined;
 }) {
   const tone = left === null ? null : left <= 10 ? "error" : left <= 20 ? "warning" : null;
   return (
@@ -175,10 +174,7 @@ function UsageRow({
           <div
             tabIndex={0}
             aria-label={`${label}: ${value ?? `${left}% left`}`}
-            className={cn(
-              "col-span-3 grid h-6 cursor-default grid-cols-subgrid items-center rounded-lg px-2.5 outline-none hover:bg-black/[0.035] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring data-popup-open:bg-black/[0.035] dark:hover:bg-white/[0.08] dark:data-popup-open:bg-white/[0.08]",
-              className,
-            )}
+            className="col-span-3 grid h-6 cursor-default grid-cols-subgrid items-center rounded-lg px-2.5 outline-none hover:bg-black/[0.035] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring data-popup-open:bg-black/[0.035] dark:hover:bg-white/[0.08] dark:data-popup-open:bg-white/[0.08]"
           />
         }
       >

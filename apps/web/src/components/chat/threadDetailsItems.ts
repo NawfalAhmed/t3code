@@ -12,6 +12,7 @@ export const THREAD_DETAILS_ITEMS = [
   { id: "automations", label: "Automations", defaultVisible: true },
   { id: "lineage", label: "Lineage", defaultVisible: true },
   { id: "usage", label: "Usage", defaultVisible: false },
+  { id: "context", label: "Context", defaultVisible: false },
 ] as const;
 
 export type ThreadDetailsItemId = (typeof THREAD_DETAILS_ITEMS)[number]["id"];
@@ -25,6 +26,8 @@ type ThreadDetailsItemSettings = Pick<
 
 // People who turned on the retired Labs toggle keep Usage until they change it here.
 function defaultVisible(item: ThreadDetailsItem, settings: ThreadDetailsItemSettings) {
+  if (item.id === "context")
+    return settings.threadDetailsItems.usage ?? settings.threadDetailsUsageEnabled;
   return item.id === "usage" ? settings.threadDetailsUsageEnabled : item.defaultVisible;
 }
 
@@ -39,21 +42,24 @@ export function resolveThreadDetailsVisibility(
   ) as Record<ThreadDetailsItemId, boolean>;
 }
 
-/** Stores only choices that differ from the default, so a later default change reaches everyone else. */
+/** Keeps the former combined preference until Context is chosen independently. */
 export function setThreadDetailsItem(
   settings: ThreadDetailsItemSettings,
   item: ThreadDetailsItem,
   visible: boolean,
 ): ClientSettings["threadDetailsItems"] {
   const { [item.id]: _previous, ...rest } = settings.threadDetailsItems;
-  return visible === defaultVisible(item, settings) ? rest : { ...rest, [item.id]: visible };
+  const next = visible === defaultVisible(item, settings) ? rest : { ...rest, [item.id]: visible };
+  return item.id === "usage"
+    ? { ...next, context: resolveThreadDetailsVisibility(settings).context }
+    : next;
 }
 
 export function isDefaultThreadDetailsVisibility(visibility: ThreadDetailsVisibility) {
   return THREAD_DETAILS_ITEMS.every((item) => visibility[item.id] === item.defaultVisible);
 }
 
-/** Also clears the retired Labs flag, so Usage returns to off. */
+/** Also clears the retired Labs flag, so Usage and Context return to off. */
 export const RESET_THREAD_DETAILS_ITEMS = {
   threadDetailsItems: {},
   threadDetailsUsageEnabled: false,

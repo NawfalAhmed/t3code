@@ -23,7 +23,12 @@ import { ThreadDetailsSection } from "./ThreadDetailsSection";
 import { ThreadAutomationsPanel } from "./ThreadAutomationsPanel";
 import { ThreadRelationshipsPanel } from "./ThreadRelationshipsControl";
 import { ThreadServersPanel } from "./ThreadServersPanel";
-import { ThreadDetailsUsage, type ThreadDetailsUsageInput } from "./ThreadDetailsUsage";
+import {
+  ThreadDetailsContext,
+  ThreadDetailsUsage,
+  type ThreadDetailsUsageInput,
+} from "./ThreadDetailsUsage";
+import type { ContextWindowSnapshot } from "../../lib/contextWindow";
 import { ThreadDetailsItemsMenuItems } from "./ThreadDetailsItemsMenu";
 import { resolveThreadDetailsVisibility, THREAD_DETAILS_ITEMS } from "./threadDetailsItems";
 import { useClientSettings } from "../../hooks/useSettings";
@@ -80,6 +85,7 @@ interface ThreadDetailsPanelProps extends Pick<
   ) => Promise<ProjectScriptActionResult>;
   onDeleteProjectScript: (scriptId: string) => Promise<ProjectScriptActionResult>;
   usage: ThreadDetailsUsageInput;
+  contextWindow: ContextWindowSnapshot | null;
 }
 
 export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
@@ -253,6 +259,10 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
               ) : null}
 
               {visible.usage ? <ThreadDetailsUsage {...props.usage} /> : null}
+
+              {visible.context ? (
+                <ThreadDetailsContext contextWindow={props.contextWindow} />
+              ) : null}
 
               {/* Shown only when no section above has content, so an emptied card can be refilled. */}
               <div className="p-2 group-has-[>section>:last-child:not(:empty)]/details-items:hidden">
