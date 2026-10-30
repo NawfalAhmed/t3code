@@ -224,7 +224,10 @@ const RunContextSelector = memo(function RunContextSelector({
     <Tooltip>
       <TooltipTrigger render={<span className="inline-flex shrink-0" />}>
         <WorkspaceIcon
-          className={isPanel ? THREAD_DETAILS_PANEL_ICON_CLASS : "size-3 shrink-0 mx-0!"}
+          className={cn(
+            isPanel ? THREAD_DETAILS_PANEL_ICON_CLASS : "size-3 shrink-0 mx-0!",
+            !isPanel && envLocked && "text-foreground/70 dark:text-muted-foreground",
+          )}
         />
       </TooltipTrigger>
       <TooltipPopup>
@@ -263,10 +266,12 @@ const RunContextSelector = memo(function RunContextSelector({
   const triggerContent = (
     <>
       {icon}
-      <ComposerContextLabel displayMode={displayMode}>
-        {autoEnvironmentLabel ??
-          (showEnvironmentIndicator ? (activeEnvironment?.label ?? "Run on") : workspaceLabel)}
-      </ComposerContextLabel>
+      {isPanel || !envLocked || showEnvironmentIndicator ? (
+        <ComposerContextLabel displayMode={displayMode}>
+          {autoEnvironmentLabel ??
+            (showEnvironmentIndicator ? (activeEnvironment?.label ?? "Run on") : workspaceLabel)}
+        </ComposerContextLabel>
+      ) : null}
       {/* Trailing in the panel, so every row label starts on the same edge. */}
       {isPanel && showEnvironmentIndicator ? workspaceIcon : null}
     </>
@@ -277,6 +282,7 @@ const RunContextSelector = memo(function RunContextSelector({
       <span
         className={cn(
           "inline-flex h-7 min-w-0 max-w-[48%] flex-initial items-center justify-start gap-1 rounded-md border border-transparent px-1.75 font-normal text-foreground/70 text-xs sm:h-6 dark:text-muted-foreground",
+          !isPanel && envLocked && !showEnvironmentIndicator && "px-0",
           isPanel && "max-w-full",
           isPanel && THREAD_DETAILS_PANEL_LOCKED_ROW_CLASS,
         )}
@@ -284,7 +290,7 @@ const RunContextSelector = memo(function RunContextSelector({
         aria-label={
           isPanel
             ? `Run context: ${[autoEnvironmentLabel ?? activeEnvironment?.label, workspaceLabel].filter(Boolean).join(", ")}`
-            : undefined
+            : workspaceLabel
         }
         data-composer-context-control
       >
@@ -760,7 +766,10 @@ export const BranchToolbar = memo(function BranchToolbar({
     <ComposerSurface.ContextStrip
       ref={attachStrip}
       data-compact={labelsOverflow ? "" : undefined}
-      className={cn("gap-1 text-xs font-normal text-foreground/70 dark:text-muted-foreground")}
+      className={cn(
+        "text-xs font-normal text-foreground/70 dark:text-muted-foreground",
+        envLocked ? "gap-0" : "gap-1",
+      )}
     >
       {showGitControls ? (
         <div className="contents @3xl/composer-surface:hidden">
@@ -788,7 +797,8 @@ export const BranchToolbar = memo(function BranchToolbar({
       {showGitControls || showEnvironmentIndicator ? (
         <div
           className={cn(
-            "min-h-7 min-w-10 items-center gap-1 sm:min-h-6",
+            "min-h-7 items-center gap-1 sm:min-h-6",
+            envLocked ? "min-w-0" : "min-w-10",
             showGitControls ? "hidden @3xl/composer-surface:flex" : "flex",
             "flex-initial",
           )}
@@ -816,6 +826,7 @@ export const BranchToolbar = memo(function BranchToolbar({
           {showGitControls ? (
             <BranchToolbarEnvModeSelector
               forceNewWorktree={forceNewWorktree}
+              iconOnly={envLocked}
               envLocked={envModeLocked}
               effectiveEnvMode={effectiveEnvMode}
               activeWorktreePath={activeWorktreePath}

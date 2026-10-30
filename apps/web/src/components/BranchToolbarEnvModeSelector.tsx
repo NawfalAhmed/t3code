@@ -24,11 +24,13 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { useAtomValue } from "@effect/atom-react";
 import { shortcutLabelForCommand } from "../keybindings";
 import { primaryServerKeybindingsAtom } from "../state/server";
+import { cn } from "~/lib/utils";
 
 export const WORKTREE_SELECT_VALUE_PREFIX = "worktree:";
 
 interface BranchToolbarEnvModeSelectorProps {
   forceNewWorktree?: boolean;
+  iconOnly?: boolean;
   envLocked: boolean;
   effectiveEnvMode: EnvMode;
   activeWorktreePath: string | null;
@@ -39,6 +41,7 @@ interface BranchToolbarEnvModeSelectorProps {
 
 export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSelector({
   forceNewWorktree = false,
+  iconOnly = false,
   envLocked,
   effectiveEnvMode,
   activeWorktreePath,
@@ -72,7 +75,11 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
   if (envLocked || forceNewWorktree) {
     const lockedRow = (
       <span
-        className="inline-flex h-7 min-w-0 items-center gap-1 border border-transparent px-1.75 font-normal text-muted-foreground/70 text-xs sm:h-6"
+        className={cn(
+          "inline-flex h-7 min-w-0 items-center gap-1 border border-transparent font-normal text-muted-foreground/70 text-xs sm:h-6",
+          iconOnly ? "px-0 text-foreground/70 dark:text-muted-foreground" : "px-1.75",
+        )}
+        aria-label={resolveLockedWorkspaceLabel(activeWorktreePath, effectiveEnvMode)}
         data-composer-context-control
       >
         {activeWorktreePath ? (
@@ -82,11 +89,13 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
         ) : (
           <FolderIcon className="size-3" />
         )}
-        <ComposerContextLabel>
-          {forceNewWorktree
-            ? resolveEnvModeLabel("worktree")
-            : resolveLockedWorkspaceLabel(activeWorktreePath, effectiveEnvMode)}
-        </ComposerContextLabel>
+        {!iconOnly ? (
+          <ComposerContextLabel>
+            {forceNewWorktree
+              ? resolveEnvModeLabel("worktree")
+              : resolveLockedWorkspaceLabel(activeWorktreePath, effectiveEnvMode)}
+          </ComposerContextLabel>
+        ) : null}
       </span>
     );
 
