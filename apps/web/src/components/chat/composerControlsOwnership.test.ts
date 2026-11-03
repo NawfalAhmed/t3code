@@ -6,9 +6,24 @@ const base = {
   matchesDefault: true,
   collapsed: false,
   measuredHiddenBlockCount: 0,
+  permissionsShownInStrip: false,
 };
 
 describe("resolveComposerControlsOwnership", () => {
+  it("lets the visible strip own permissions and composer.mode", () => {
+    const result = resolveComposerControlsOwnership({
+      ...base,
+      matchesDefault: false,
+      permissionsShownInStrip: true,
+      measuredHiddenBlockCount: 1,
+    });
+    expect(result).toMatchObject({
+      accessDisplay: "hidden",
+      showModeBlock: false,
+      pickerOwnsModeShortcut: false,
+      overflowShowsPermissions: false,
+    });
+  });
   it("hides the chip at the default and lets the model picker answer composer.mode", () => {
     const result = resolveComposerControlsOwnership(base);
     expect(result).toMatchObject({
