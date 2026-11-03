@@ -8,7 +8,7 @@ import { Discovery } from "@t3tools/client-runtime/relay";
 import type { EnvironmentId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 
-import { environmentCatalog } from "../connection/catalog";
+import { environmentCatalog, linkOriginLabelAtom } from "../connection/catalog";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import {
   environmentPresentations,
@@ -84,6 +84,12 @@ export function useEnvironment(
   return environmentId === null || presentation === null
     ? null
     : projectEnvironmentPresentation(environmentId, presentation);
+}
+
+/** A linked environment's session label, with this device's name for the machine it came from. */
+export function useLinkOriginLabel(label: string | null): string | null {
+  const displayed = useAtomValue(linkOriginLabelAtom(label ?? ""));
+  return label === null ? null : displayed;
 }
 
 export function usePrimaryEnvironment(): EnvironmentPresentation | null {
