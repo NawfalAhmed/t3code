@@ -1,13 +1,14 @@
 import type { EnvironmentId, RuntimeMode } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import { T, useGT, useMessages } from "gt-react";
+import { useRef } from "react";
 
 import { shortcutLabelForCommand } from "../keybindings";
 import { useManagedPolicy } from "../state/managedPolicy";
 import { primaryServerKeybindingsAtom } from "../state/server";
 import { ComposerControl } from "./chat/ComposerControl";
 import { ComposerPermissionsSection } from "./chat/ComposerFooterControls";
-import { useComposerMenuProps } from "./chat/composerEventScope";
+import { focusRequestedPermission, useComposerMenuProps } from "./chat/composerEventScope";
 import {
   resolveCompatibleRuntimeMode,
   resolveRuntimeModeOptions,
@@ -22,6 +23,7 @@ export function ComposerContextPermissions(props: {
   runtimeMode: RuntimeMode;
   supportedRuntimeModes: ReadonlyArray<RuntimeMode> | undefined;
   onRuntimeModeChange: (mode: RuntimeMode) => void;
+  disabled?: boolean;
 }) {
   const gt = useGT();
   const messages = useMessages();
@@ -34,21 +36,25 @@ export function ComposerContextPermissions(props: {
     props.supportedRuntimeModes,
   );
   const options = resolveRuntimeModeOptions(modes, useManagedPolicy(props.environmentId), messages);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const composerMenuProps = useComposerMenuProps();
   const { icon: Icon } = runtimeModeConfig[mode];
   const label = messages(runtimeModeConfig[mode].label);
   return (
-    <Menu>
+    <Menu onOpenChangeComplete={(open) => focusRequestedPermission(open, triggerRef.current)}>
       <Tooltip>
         <TooltipTrigger
           render={
             <MenuTrigger
               render={
                 <ComposerControl
+                  ref={triggerRef}
                   size="xs"
                   className="ms-auto min-w-0 shrink-0"
                   aria-label={gt("Permissions: {label}", { label })}
                   data-composer-context-control
+                  data-composer-shortcut="composer.mode"
+                  disabled={props.disabled}
                 />
               }
             />
