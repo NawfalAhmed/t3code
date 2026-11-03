@@ -25,6 +25,7 @@ import * as Semaphore from "effect/Semaphore";
 
 import * as ProviderLatestVersions from "@t3tools/provider-core/server/ProviderLatestVersions";
 import * as ModelManifest from "./ModelManifest.ts";
+import * as ProviderStatusDebugLog from "./providerStatusDebugLog.ts";
 import { applyProviderCompatibility } from "./providerCompatibility.ts";
 import * as ServerConfig from "../config.ts";
 import * as ProviderInstanceRegistry from "./ProviderInstanceRegistry.ts";
@@ -431,6 +432,19 @@ export const layer = Layer.effect(
       );
     const providersRef = yield* Ref.make<ReadonlyArray<ServerProvider>>(
       cachedProviders.map((provider) => classifyCompatibility(provider, initialManifest)),
+    );
+    // TEMP(personal): remove with providerStatusDebugLog.ts.
+    const debugSubscription = yield* PubSub.subscribe(changesPubSub);
+    yield* ProviderStatusDebugLog.startProviderStatusDebugLog({
+      path: path.join(config.logsDir, "provider-status-debug.ndjson"),
+      fileSystem,
+      bootProviders: yield* Ref.get(providersRef),
+      bootInstanceIds: bootSources.map((source) => source.instanceId),
+    });
+    yield* PubSub.take(debugSubscription).pipe(
+      Effect.flatMap(ProviderStatusDebugLog.logProviderStatusPublish),
+      Effect.forever,
+      Effect.forkScoped,
     );
     const workspaceRefreshesRef = yield* Ref.make<
       ReadonlyMap<ProviderInstance, ReadonlyMap<string, Deferred.Deferred<void>>>
