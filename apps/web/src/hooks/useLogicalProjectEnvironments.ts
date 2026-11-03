@@ -18,7 +18,7 @@ import { useClientSettings } from "./useSettings";
 
 export function useLogicalProjectEnvironments(
   activeProject: EnvironmentProject | null,
-  scratchDraft: boolean,
+  scratch: boolean,
 ): readonly EnvironmentOption[] {
   const { environments } = useEnvironments();
   const allProjects = useProjects();
@@ -40,7 +40,7 @@ export function useLogicalProjectEnvironments(
       machine: resolveEnvironmentMachineKind(environment?.serverConfig ?? null),
     });
   };
-  if (scratchDraft) {
+  if (scratch) {
     for (const environment of environments) {
       const scratchRoot = availableScratchWorkspaceRoot(
         environment.connection.phase,
