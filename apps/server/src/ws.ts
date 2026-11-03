@@ -173,6 +173,7 @@ import * as ThreadSearch from "./orchestration-v2/ThreadSearch.ts";
 import * as OrchestrationEventStore from "./persistence/OrchestrationEventStore.ts";
 import { userFacingDispatchErrorMessage } from "./orchestration-v2/UserFacingErrors.ts";
 import * as ProviderRegistry from "./provider/ProviderRegistry.ts";
+import * as ProviderStatusDebugLog from "./provider/providerStatusDebugLog.ts";
 import * as ProviderInstanceRegistry from "./provider/ProviderInstanceRegistry.ts";
 import * as AcpRegistrySupport from "@t3tools/provider-acp-registry/server/AcpRegistrySupport";
 import * as AcpRegistryRuntimeCoordinator from "@t3tools/provider-acp-registry/server/AcpRegistryRuntimeCoordinator";
@@ -3319,7 +3320,12 @@ export const layerWsRpc = (
               const providerStatuses = Stream.zipLatestWith(
                 // Seed the changes-only stream so early source refreshes pair with current providers.
                 Stream.concat(
-                  Stream.fromEffect(providerRegistry.getProviders),
+                  Stream.fromEffect(
+                    // TEMP(personal): remove with providerStatusDebugLog.ts.
+                    providerRegistry.getProviders.pipe(
+                      Effect.tap(ProviderStatusDebugLog.logProviderStatusClientSeed),
+                    ),
+                  ),
                   providerRegistry.streamChanges,
                 ),
                 usageLimitSources.streamChanges.pipe(
