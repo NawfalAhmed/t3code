@@ -12936,5 +12936,11 @@
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
   "cb0852f8e19d3e46": "{provider}: {windows}",
   "810e69d8207012d8": "No matching models.",
-  "d6d9fc563f9c484e": "in project"
+  "d6d9fc563f9c484e": "in project",
+  "44588d4ef408bfa0": "このマシンに連携されている T3 Connect アカウントにサインインしてください。",
+  "5f08f0994dfe385a": "マシン名",
+  "8da596a52355d32a": "このマシンが T3 Code クライアントと共有する名前です。空欄にするとシステム名を使用します。",
+  "cc44af9fe27dff46": "T3 Connect でのマシン名",
+  "5c5dd80c9a6da5ab": "マシン名を公開しました",
+  "49beca38ef9df348": "名前を公開"
 }

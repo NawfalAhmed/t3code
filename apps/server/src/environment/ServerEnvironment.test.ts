@@ -20,6 +20,7 @@ import {
   RELAY_URL_SECRET,
 } from "../cloud/config.ts";
 import * as ServerConfig from "../config.ts";
+import * as ServerSettings from "../serverSettings.ts";
 import * as ServerEnvironment from "./ServerEnvironment.ts";
 
 const layerServerEnvironment = (baseDir: string) =>
@@ -75,7 +76,34 @@ const makeServerConfig = Effect.fn(function* (baseDir: string) {
   } satisfies ServerConfig.ServerConfig["Service"];
 });
 
-it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("ServerEnvironmentLive", (it) => {
+const layerTestServices = Layer.mergeAll(
+  NodeServices.layer,
+  NodeCrypto.layer,
+  ServerSettings.layerTest(),
+);
+
+it.layer(layerTestServices)("ServerEnvironmentLive", (it) => {
+  it.effect(
+    "advertises the configured machine name and restores the system name when cleared",
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const baseDir = yield* fs.makeTempDirectoryScoped();
+        yield* Effect.gen(function* () {
+          const settings = yield* ServerSettings.ServerSettingsService;
+          const environment = yield* ServerEnvironment.ServerEnvironment;
+          const original = yield* environment.getDescriptor;
+          yield* settings.updateSettings({ machineName: "Work Mac" });
+          expect(yield* environment.getDescriptor).toEqual({ ...original, label: "Work Mac" });
+          yield* settings.updateSettings({ machineName: "" });
+          expect(yield* environment.getDescriptor).toEqual(original);
+        }).pipe(
+          Effect.provide(
+            layerServerEnvironment(baseDir).pipe(Layer.provideMerge(ServerSettings.layerTest())),
+          ),
+        );
+      }),
+  );
   it.effect("publishes proven install ownership only for manually updated servers", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;

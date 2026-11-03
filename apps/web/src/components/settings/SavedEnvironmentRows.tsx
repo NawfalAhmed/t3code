@@ -565,10 +565,12 @@ function T3ConnectTunnelUsage({ tunnelLimit }: { readonly tunnelLimit: number | 
 function ConfiguredCloudLinkRow({
   environmentId,
   canManageRelay,
+  canPublishMachineName,
   connectDeviceApproval,
 }: {
   readonly environmentId: EnvironmentId;
   readonly canManageRelay: boolean;
+  readonly canPublishMachineName: boolean;
   readonly connectDeviceApproval: ConnectDeviceApprovalControl | null;
 }) {
   const setting = useSearchableSetting();
@@ -584,8 +586,10 @@ function ConfiguredCloudLinkRow({
     holdWebhooksWhileOffline,
     operationError,
     tunnelLimit,
+    canConfigureRelay,
     needsRelayConfiguration,
     reconcileCloudState,
+    publishMachineName,
   } = useCloudLinkController(environmentId);
   const { openAuthPrompt } = useT3ConnectAuthPrompt();
   // The server unlinks and refuses relay changes under such a policy; unlinking stays possible.
@@ -782,6 +786,31 @@ function ConfiguredCloudLinkRow({
           description={gt("Run `t3 connect link` on the host, then restart T3 Code there.")}
         />
       )}
+      {canPublishMachineName && managedTunnelActive && cloudLinkState.data?.linkableHere ? (
+        <SettingsRow
+          title={gt("Machine name on T3 Connect")}
+          control={
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={switchDisabled || !canConfigureRelay || connectDenial !== undefined}
+              onClick={async () => {
+                setIsUpdating(true);
+                try {
+                  const ok = await publishMachineName();
+                  if (ok) {
+                    toastManager.add({ type: "success", title: gt("Machine name published") });
+                  }
+                } finally {
+                  setIsUpdating(false);
+                }
+              }}
+            >
+              <T>Publish name</T>
+            </Button>
+          }
+        />
+      ) : null}
       {signedOut && showSwitch ? null : (
         <SettingsRow
           title={setting("publish-agent-activity").title}
@@ -862,11 +891,13 @@ export function CloudLinkRow({
   environmentId,
   canReadRelay,
   canManageRelay,
+  canPublishMachineName,
   connectDeviceApproval,
 }: {
   readonly environmentId: EnvironmentId;
   readonly canReadRelay: boolean;
   readonly canManageRelay: boolean;
+  readonly canPublishMachineName: boolean;
   readonly connectDeviceApproval: ConnectDeviceApprovalControl | null;
 }) {
   const gt = useGT();
@@ -885,6 +916,7 @@ export function CloudLinkRow({
     <ConfiguredCloudLinkRow
       environmentId={environmentId}
       canManageRelay={canManageRelay}
+      canPublishMachineName={canPublishMachineName}
       connectDeviceApproval={connectDeviceApproval}
     />
   );

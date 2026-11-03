@@ -36,6 +36,7 @@ import {
   AuthOrchestrationOperateScope,
   AuthTerminalOperateScope,
   AuthProvidersManageScope,
+  AuthSettingsWriteScope,
   type AuthEnvironmentScope,
   ProviderDriverKind,
   type ScheduledTaskListResult,
@@ -2852,6 +2853,12 @@ export const layerWsRpc = (
         [WS_METHODS.serverUpdateSettings]:
           /* Request instrumentation already owns the span; keep this helper in that context. */
           Effect.fnUntraced(function* ({ patch, providerInstanceMutation }) {
+            if (patch.machineName !== undefined && currentSession.subject !== "desktop-bootstrap") {
+              return yield* new EnvironmentAuthorizationError({
+                message: "Change the machine name from the T3 Code desktop app on that machine.",
+                requiredScope: AuthSettingsWriteScope,
+              });
+            }
             const deviceHosts = patch.deviceHosts
               ? yield* remoteSshDeviceHosts(patch.deviceHosts).pipe(
                   Effect.provide(deviceHostContext),
