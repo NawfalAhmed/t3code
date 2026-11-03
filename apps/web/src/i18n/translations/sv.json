@@ -1594,8 +1594,6 @@
   "a9d0457b171de12d": "Aktuell worktree",
   "28dd3410a8843fed": "Worktree",
   "bc90899d284f2b0a": "Lokal utcheckning",
-  "1ff98021402cd2a0": "Föregående worktree ({branch})",
-  "d14b33c2910ebacd": "Föregående worktree",
   "3f4b4e4159e06c92": "Välj ref",
   "ee85c4eb37ef6637": "Från {branch} (fjärr)",
   "e98c75d8cb111c2b": "Från {branch}",
@@ -2201,7 +2199,6 @@
   "d95275127354650e": "Behörigheterna har ändrats för {label}",
   "c87e4484112112e3": "Den här anslutningen använder fortfarande de gamla behörigheterna, så vissa åtgärder kanske inte längre är tillgängliga. Parkoppla igen med en ny länk med de behörigheter du behöver.",
   "41ef5fd3a5051f37": "Öppna Delning och åtkomst",
-  "5f1f54e42cd5b57a": "Föregående worktree",
   "b11375ba00e506b5": "Klonar {name}",
   "00ad8aeed0a6c461": "Avbryt",
   "f10d1278b1a29dae": "Det gick inte att avbryta kloningen",
@@ -8539,7 +8536,6 @@
   "421e661861eddace": "Inmatningsfält: minska ansträngning",
   "53f3cdb399f7fc18": "Inmatningsfält: läge",
   "7a9feb7e4cc4d7c8": "Inmatningsfält: arbetsyta",
-  "a3aae3ba94ead98a": "Inmatningsfält: föregående worktree",
   "2cda8b72b22b4321": "Inmatningsfält: gren",
   "5f22fc3a4e7d8c51": "Chatt: ny",
   "e08a4df94d0201f4": "Chatt: ny lokal",
@@ -12224,5 +12220,6 @@
   "421bf037f9049976": "Choose model and reasoning: {selection}",
   "b242b18b1e0292fd": "More options",
   "42a72a17c2a4533e": "Switch to {provider} · {key}-click for all models",
-  "9baf82f709b023d4": "Switch to {provider}"
+  "9baf82f709b023d4": "Switch to {provider}",
+  "e96ad788c35b63d3": "Existing Worktree ({branch})"
 }

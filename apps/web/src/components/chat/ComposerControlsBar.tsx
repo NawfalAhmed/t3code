@@ -69,7 +69,6 @@ export function ComposerControlsBar(props: {
   ) => void;
   providerToggle: ComponentProps<typeof ProviderModelPicker>["providerToggle"] | null;
   effortDisplay: EffortDisplay;
-  /** The strip under a new thread names the permissions, so the row does not repeat them. */
   permissionsShownInStrip: boolean;
   compatibleRuntimeMode: RuntimeMode;
   defaultRuntimeMode: RuntimeMode | undefined;
@@ -118,7 +117,6 @@ export function ComposerControlsBar(props: {
     onModelReasoningOptionsChange,
     providerToggle,
     compatibleRuntimeMode,
-    defaultRuntimeMode,
     compatibleRuntimeModeOptions,
     handleRuntimeModeChange,
     composerControlsCollapsed,
@@ -148,7 +146,7 @@ export function ComposerControlsBar(props: {
     modelPickerIconClassName,
     getModelDisabledReason,
   } = props;
-  const accessMatchesDefault = compatibleRuntimeMode === defaultRuntimeMode;
+  const accessMatchesDefault = compatibleRuntimeMode === props.defaultRuntimeMode;
   const {
     accessDisplay,
     showModeBlock,
@@ -157,7 +155,8 @@ export function ComposerControlsBar(props: {
     overflowShowsPermissions,
     pickerOwnsModeShortcut,
   } = resolveComposerControlsOwnership({
-    matchesDefault: accessMatchesDefault || props.permissionsShownInStrip,
+    matchesDefault: accessMatchesDefault,
+    permissionsShownInStrip: props.permissionsShownInStrip,
     collapsed: composerControlsCollapsed,
     measuredHiddenBlockCount,
   });

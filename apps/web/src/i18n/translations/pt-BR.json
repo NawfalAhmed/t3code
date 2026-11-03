@@ -1594,8 +1594,6 @@
   "a9d0457b171de12d": "Worktree atual",
   "28dd3410a8843fed": "Worktree",
   "bc90899d284f2b0a": "Checkout local",
-  "1ff98021402cd2a0": "Worktree anterior ({branch})",
-  "d14b33c2910ebacd": "Worktree anterior",
   "3f4b4e4159e06c92": "Selecionar ref",
   "ee85c4eb37ef6637": "A partir de {branch} (remoto)",
   "e98c75d8cb111c2b": "A partir de {branch}",
@@ -2201,7 +2199,6 @@
   "d95275127354650e": "As permissões de {label} mudaram",
   "c87e4484112112e3": "Esta conexão ainda usa as permissões antigas, então algumas ações podem não estar mais disponíveis. Pareie novamente usando um novo link com as permissões de que você precisa.",
   "41ef5fd3a5051f37": "Abrir Compartilhamento e acesso",
-  "5f1f54e42cd5b57a": "Worktree anterior",
   "b11375ba00e506b5": "Clonando {name}",
   "00ad8aeed0a6c461": "Cancelar",
   "f10d1278b1a29dae": "Falha ao cancelar o clone",
@@ -8531,7 +8528,6 @@
   "421e661861eddace": "Editor: diminuir esforço",
   "53f3cdb399f7fc18": "Editor: modo",
   "7a9feb7e4cc4d7c8": "Editor: workspace",
-  "a3aae3ba94ead98a": "Editor: worktree anterior",
   "2cda8b72b22b4321": "Editor: branch",
   "5f22fc3a4e7d8c51": "Chat: novo",
   "e08a4df94d0201f4": "Chat: novo local",
@@ -12216,5 +12212,6 @@
   "421bf037f9049976": "Choose model and reasoning: {selection}",
   "b242b18b1e0292fd": "More options",
   "42a72a17c2a4533e": "Switch to {provider} · {key}-click for all models",
-  "9baf82f709b023d4": "Switch to {provider}"
+  "9baf82f709b023d4": "Switch to {provider}",
+  "e96ad788c35b63d3": "Existing Worktree ({branch})"
 }
