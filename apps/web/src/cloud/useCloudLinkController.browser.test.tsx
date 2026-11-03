@@ -49,7 +49,11 @@ vi.mock(import("@effect/atom-react"), async (original) => ({
 }));
 vi.mock(import("@clerk/react"), async (original) => ({
   ...(await original()),
-  useAuth: (() => ({ getToken: testState.getToken, isSignedIn: true })) as never,
+  useAuth: (() => ({
+    getToken: testState.getToken,
+    isSignedIn: true,
+    userId: "account-1",
+  })) as never,
 }));
 vi.mock(import("../components/ui/toast"), async (original) => {
   const actual = await original();
@@ -139,6 +143,14 @@ async function mountController() {
       });
       return succeeded;
     },
+    async publishMachineName() {
+      let succeeded = false;
+      await act(async () => {
+        if (controller === null) throw new Error("Controller is not mounted.");
+        succeeded = await controller.publishMachineName();
+      });
+      return succeeded;
+    },
   });
 }
 
@@ -168,6 +180,34 @@ function setup() {
 }
 
 describe("useCloudLinkController", () => {
+  it.each([
+    { linkableHere: true, cloudUserId: "account-1", canConfigure: true, allowed: true },
+    { linkableHere: true, cloudUserId: "other-account", canConfigure: true, allowed: false },
+    { linkableHere: false, cloudUserId: "account-1", canConfigure: true, allowed: false },
+    { linkableHere: true, cloudUserId: "account-1", canConfigure: false, allowed: false },
+  ])(
+    "publishes a name only for the current account's local link with relay configuration permission ($allowed)",
+    async ({ allowed, canConfigure, ...linkState }) => {
+      using _setup = setup();
+      if (!canConfigure) testState.scopes.delete(AuthRelayConfigureScope);
+      testState.snapshot = { ...linkedState, ...linkState };
+      testState.renderedSnapshot = testState.snapshot;
+      await using screen = await mountController();
+
+      expect(await screen.publishMachineName()).toBe(allowed);
+      if (allowed) {
+        expect(testState.link).toHaveBeenCalledWith({
+          target,
+          clerkToken: "clerk-token",
+          mode: "managed",
+        });
+        expect(testState.unlink).not.toHaveBeenCalled();
+        expect(testState.preferences).not.toHaveBeenCalled();
+      } else {
+        expectNoMutations();
+      }
+    },
+  );
   it.each([AuthRelayReadScope, AuthRelayWriteScope])(
     "does not mutate without %s, even with a cached link snapshot",
     async (scope) => {

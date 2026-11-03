@@ -12228,5 +12228,11 @@
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
   "cb0852f8e19d3e46": "{provider}: {windows}",
   "810e69d8207012d8": "No matching models.",
-  "d6d9fc563f9c484e": "in project"
+  "d6d9fc563f9c484e": "in project",
+  "44588d4ef408bfa0": "Logga in på det T3 Connect-konto som är kopplat till den här datorn.",
+  "5f08f0994dfe385a": "Datornamn",
+  "8da596a52355d32a": "Namnet som den här datorn delar med T3 Code-klienter. Lämna fältet tomt för att använda systemnamnet.",
+  "cc44af9fe27dff46": "Datornamn i T3 Connect",
+  "5c5dd80c9a6da5ab": "Datornamnet har publicerats",
+  "49beca38ef9df348": "Publicera namnet"
 }

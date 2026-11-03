@@ -54,7 +54,7 @@ function tunnelLimitFromLinkFailure(cause: unknown): number | null {
 }
 
 export function useCloudLinkController(environmentId: EnvironmentId | null) {
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn, userId } = useAuth();
   const refreshRelayEnvironments = useAtomCommand(relayEnvironmentDiscovery.refresh, {
     reportFailure: false,
   });
@@ -115,7 +115,10 @@ export function useCloudLinkController(environmentId: EnvironmentId | null) {
     linkData !== null &&
     cloudChangeReplacesLink(linkData, relayProviderKind, desired);
 
-  const reconcileCloudState = async (desired: CloudLinkDesiredState): Promise<boolean> => {
+  const reconcileCloudState = async (
+    desired: CloudLinkDesiredState,
+    republishName = false,
+  ): Promise<boolean> => {
     setOperationError(null);
     setTunnelLimit(null);
     const target = cloudLinkState.target;
@@ -190,7 +193,18 @@ export function useCloudLinkController(environmentId: EnvironmentId | null) {
         reportUpdateFailure(new Error(m(msg("Sign in to T3 Connect before enabling this."))));
         return false;
       }
-      if (cloudChangeReplacesLink(currentLinkState, relayProviderKind, desired)) {
+      if (
+        republishName &&
+        (!isManagedTunnelActive(currentLinkState, relayProviderKind) ||
+          !currentLinkState.linkableHere ||
+          currentLinkState.cloudUserId !== userId)
+      ) {
+        reportUpdateFailure(
+          new Error(m(msg("Sign in to the T3 Connect account linked to this machine."))),
+        );
+        return false;
+      }
+      if (republishName || cloudChangeReplacesLink(currentLinkState, relayProviderKind, desired)) {
         if (!readEnvironmentCanConfigureRelay(environmentId)) {
           reportUpdateFailure(
             new Error(
@@ -222,23 +236,25 @@ export function useCloudLinkController(environmentId: EnvironmentId | null) {
           return false;
         }
       }
-      if (!canManageLink() || readLinkState() === null) {
-        cloudLinkState.refresh();
-        return false;
-      }
-      const prefResult = await updateEnvironmentPreferences({
-        target,
-        publishAgentActivity: desired.publish,
-        ...(desired.holdWebhooksWhileOffline === undefined
-          ? {}
-          : { holdWebhooksWhileOffline: desired.holdWebhooksWhileOffline }),
-      });
-      if (prefResult._tag === "Failure") {
-        if (!isAtomCommandInterrupted(prefResult)) {
-          reportUpdateFailure(squashAtomCommandFailure(prefResult));
+      if (!republishName) {
+        if (!canManageLink() || readLinkState() === null) {
+          cloudLinkState.refresh();
+          return false;
         }
-        cloudLinkState.refresh();
-        return false;
+        const prefResult = await updateEnvironmentPreferences({
+          target,
+          publishAgentActivity: desired.publish,
+          ...(desired.holdWebhooksWhileOffline === undefined
+            ? {}
+            : { holdWebhooksWhileOffline: desired.holdWebhooksWhileOffline }),
+        });
+        if (prefResult._tag === "Failure") {
+          if (!isAtomCommandInterrupted(prefResult)) {
+            reportUpdateFailure(squashAtomCommandFailure(prefResult));
+          }
+          cloudLinkState.refresh();
+          return false;
+        }
       }
     }
 
@@ -262,7 +278,10 @@ export function useCloudLinkController(environmentId: EnvironmentId | null) {
     holdWebhooksWhileOffline,
     operationError,
     tunnelLimit,
+    canConfigureRelay,
     needsRelayConfiguration,
     reconcileCloudState,
+    publishMachineName: () =>
+      reconcileCloudState({ managedTunnel: true, publish: publishAgentActivity }, true),
   };
 }

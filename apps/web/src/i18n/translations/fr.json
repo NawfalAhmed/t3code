@@ -12221,5 +12221,11 @@
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
   "cb0852f8e19d3e46": "{provider}: {windows}",
   "810e69d8207012d8": "No matching models.",
-  "d6d9fc563f9c484e": "in project"
+  "d6d9fc563f9c484e": "in project",
+  "44588d4ef408bfa0": "Connectez-vous au compte T3 Connect associé à cet appareil.",
+  "5f08f0994dfe385a": "Nom de l’appareil",
+  "8da596a52355d32a": "Le nom que cet appareil partage avec les clients T3 Code. Laissez le champ vide pour utiliser le nom du système.",
+  "cc44af9fe27dff46": "Nom de l’appareil sur T3 Connect",
+  "5c5dd80c9a6da5ab": "Nom de l’appareil publié",
+  "49beca38ef9df348": "Publier le nom"
 }

@@ -13,6 +13,7 @@ import {
   AuthEnvironmentMaintainScope,
   AuthRelayReadScope,
   AuthRelayWriteScope,
+  AuthSettingsWriteScope,
   allowsPreviewTunnel,
   isManagedSettingPath,
   type AuthClientSession,
@@ -169,6 +170,58 @@ function LocalVersionStatusLabel() {
     <span className="text-xs text-muted-foreground">
       {resolveLocalVersionStatusLabel(updateState, m)}
     </span>
+  );
+}
+
+function MachineNameSetting({
+  environmentId,
+  name,
+  managed,
+}: {
+  readonly environmentId: EnvironmentId;
+  readonly name: string;
+  readonly managed: string | undefined;
+}) {
+  const gt = useGT();
+  const updateSettings = useUpdateEnvironmentSettings(environmentId);
+  const [draft, setDraft] = useState(name);
+  const [saving, setSaving] = useState(false);
+  const nextName = draft.trim();
+  const title = gt("Machine name");
+
+  return (
+    <SettingsRow
+      title={title}
+      managed={managed}
+      description={gt(
+        "The name this machine shares with T3 Code clients. Leave blank to use the system name.",
+      )}
+      control={
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (saving || nextName === name) return;
+            setSaving(true);
+            updateSettings(
+              { machineName: nextName },
+              { onSaved: () => setSaving(false), onFailed: () => setSaving(false) },
+            );
+          }}
+        >
+          <Input
+            aria-label={title}
+            value={draft}
+            maxLength={80}
+            disabled={saving}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+          <Button type="submit" size="sm" variant="outline" disabled={saving || nextName === name}>
+            <T>Save</T>
+          </Button>
+        </form>
+      }
+    />
   );
 }
 
@@ -409,6 +462,8 @@ function ConnectionsSettingsContent({
   const canReadRelay = useEnvironmentScope(accessEnvironmentId, AuthRelayReadScope);
   const canMaintain = useEnvironmentScope(accessEnvironmentId, AuthEnvironmentMaintainScope);
   const canManageRelay = useEnvironmentScope(accessEnvironmentId, AuthRelayWriteScope);
+  const canWriteSettings = useEnvironmentScope(accessEnvironmentId, AuthSettingsWriteScope);
+  const canRenameMachine = Boolean(desktopBridge) && isPrimaryAccess && canWriteSettings;
   const canManageLocalBackend = isPrimaryAccess && !isLocalEnvironmentDisabled() && canMaintain;
   const showsAccess = view === "access";
   const authAccessChanges = useEnvironmentQuery(
@@ -1271,7 +1326,8 @@ function ConnectionsSettingsContent({
           <SettingsSection
             {...searchableSetting("connections-environment")}
             title={
-              accessEnvironment?.label ??
+              (canRenameMachine && accessServerConfig?.settings.machineName) ||
+              accessEnvironment?.label ||
               (desktopBridge ? gt("This machine") : gt("Primary environment"))
             }
             icon={
@@ -1312,6 +1368,18 @@ function ConnectionsSettingsContent({
               <div className="px-3 py-2 sm:px-4">
                 <ManagedByOrganization policy={accessServerConfig.managedPolicy} />
               </div>
+            ) : null}
+            {canRenameMachine && accessServerConfig ? (
+              <MachineNameSetting
+                key={accessServerConfig.settings.machineName}
+                environmentId={accessEnvironmentId}
+                name={accessServerConfig.settings.machineName}
+                managed={
+                  accessPolicy !== undefined && isManagedSettingPath(accessPolicy, "machineName")
+                    ? gt("Managed by {organization}.", { organization: accessPolicy.organization })
+                    : undefined
+                }
+              />
             ) : null}
             {canManageLocalBackend ? (
               <SettingsRow
@@ -1375,6 +1443,7 @@ function ConnectionsSettingsContent({
                 environmentId={accessEnvironmentId}
                 canReadRelay={canReadRelay}
                 canManageRelay={canManageRelay}
+                canPublishMachineName={canRenameMachine}
                 connectDeviceApproval={
                   accessServerConfig?.settings.requireConnectDeviceApproval === undefined
                     ? null

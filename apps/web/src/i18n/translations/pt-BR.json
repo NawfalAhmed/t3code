@@ -12220,5 +12220,11 @@
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
   "cb0852f8e19d3e46": "{provider}: {windows}",
   "810e69d8207012d8": "No matching models.",
-  "d6d9fc563f9c484e": "in project"
+  "d6d9fc563f9c484e": "in project",
+  "44588d4ef408bfa0": "Entre na conta do T3 Connect vinculada a esta máquina.",
+  "5f08f0994dfe385a": "Nome da máquina",
+  "8da596a52355d32a": "O nome que esta máquina compartilha com os clientes do T3 Code. Deixe em branco para usar o nome do sistema.",
+  "cc44af9fe27dff46": "Nome da máquina no T3 Connect",
+  "5c5dd80c9a6da5ab": "Nome da máquina publicado",
+  "49beca38ef9df348": "Publicar nome"
 }
