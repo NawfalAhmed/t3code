@@ -1683,8 +1683,6 @@
   "a9d0457b171de12d": "Worktree actual",
   "28dd3410a8843fed": "Worktree",
   "bc90899d284f2b0a": "Checkout local",
-  "1ff98021402cd2a0": "Worktree anterior ({branch})",
-  "d14b33c2910ebacd": "Worktree anterior",
   "3f4b4e4159e06c92": "Seleccionar ref",
   "ee85c4eb37ef6637": "Desde {branch} (remota)",
   "e98c75d8cb111c2b": "Desde {branch}",
@@ -2300,7 +2298,6 @@
   "d95275127354650e": "Los permisos de {label} han cambiado",
   "c87e4484112112e3": "Esta conexión aún usa los permisos anteriores, así que puede que algunas acciones ya no estén disponibles. Vuelve a emparejar con un enlace nuevo que tenga los permisos que necesitas.",
   "41ef5fd3a5051f37": "Abrir Compartir y acceso",
-  "5f1f54e42cd5b57a": "Worktree anterior",
   "b11375ba00e506b5": "Clonando {name}",
   "00ad8aeed0a6c461": "Cancelar",
   "f10d1278b1a29dae": "No se pudo cancelar la clonación",
@@ -8824,7 +8821,6 @@
   "421e661861eddace": "Cuadro de mensaje: reducir esfuerzo",
   "53f3cdb399f7fc18": "Cuadro de mensaje: modo",
   "7a9feb7e4cc4d7c8": "Cuadro de mensaje: espacio de trabajo",
-  "a3aae3ba94ead98a": "Cuadro de mensaje: worktree anterior",
   "2cda8b72b22b4321": "Cuadro de mensaje: rama",
   "5f22fc3a4e7d8c51": "Chat: nuevo",
   "e08a4df94d0201f4": "Chat: nuevo local",
@@ -12991,5 +12987,6 @@
   "421bf037f9049976": "Choose model and reasoning: {selection}",
   "b242b18b1e0292fd": "More options",
   "42a72a17c2a4533e": "Switch to {provider} · {key}-click for all models",
-  "9baf82f709b023d4": "Switch to {provider}"
+  "9baf82f709b023d4": "Switch to {provider}",
+  "e96ad788c35b63d3": "Existing Worktree ({branch})"
 }

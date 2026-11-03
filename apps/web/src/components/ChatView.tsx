@@ -338,7 +338,6 @@ import {
   resolveEffectiveEnvMode,
   resolveLocalCheckoutBranchMismatch,
   shouldShowComposerContextStrip,
-  shouldShowEnvironmentIndicator,
 } from "./BranchToolbar.logic";
 import {
   getProviderStatusDismissalKey,
@@ -1308,18 +1307,10 @@ export default function ChatView(props: ChatViewProps) {
     );
   const logicalProjectEnvironments = useLogicalProjectEnvironments(
     activeProject,
-    activeProjectIsScratch && draftId !== null,
+    activeProjectIsScratch,
   );
   const hasMultipleEnvironments = logicalProjectEnvironments.length > 1;
   const canAutoBalanceEnvironments = hasMultipleEnvironments && !activeProjectIsScratch;
-  const activeEnvironmentOption =
-    logicalProjectEnvironments.find(
-      (environment) => environment.environmentId === activeThread?.environmentId,
-    ) ?? null;
-  const showComposerEnvironmentIndicator = shouldShowEnvironmentIndicator({
-    activeEnvironment: activeEnvironmentOption,
-    canPickEnvironment: hasMultipleEnvironments,
-  });
 
   const pullRequestLinking = usePullRequestLinking(environmentId);
   // Best effort: the thread already exists, so a failed link is only logged.
@@ -1919,8 +1910,6 @@ export default function ChatView(props: ChatViewProps) {
       isDraftHeroState,
       persistInActiveThreads: settings.persistComposerContextStrip,
       hasActiveProject: activeProject !== null && !showProviderSubagentBar,
-      isGitRepo,
-      showEnvironmentIndicator: showComposerEnvironmentIndicator,
     });
   const terminalShortcutLabelOptions = {
     context: {
@@ -3780,11 +3769,12 @@ export default function ChatView(props: ChatViewProps) {
               }}
               inert={isRevertingCheckpoint}
               data-chat-composer-overlay="true"
-              className={
+              className={cn(
+                "[--chat-composer-bottom-inset:calc(env(safe-area-inset-bottom)+1rem)] sm:[--chat-composer-bottom-inset:calc(env(safe-area-inset-bottom)+1.25rem)]",
                 isDraftHeroState
                   ? "pointer-events-none absolute inset-0 z-20 flex items-center [@media(max-height:34rem)]:items-end"
-                  : "pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"
-              }
+                  : "pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2",
+              )}
             >
               <div ref={draftHeroTransitionGroupRef} className="chat-composer-lane w-full">
                 <div
@@ -3937,6 +3927,7 @@ export default function ChatView(props: ChatViewProps) {
                                 respondingRequestIds={respondingRequestIds}
                                 runtimeMode={runtimeMode}
                                 defaultRuntimeMode={defaultRuntimeMode}
+                                permissionsShownInStrip={showComposerContextStrip}
                                 lockedProvider={modelPickerLockedProvider}
                                 providerStatuses={providerStatuses as ServerProvider[]}
                                 providerCatalogKnown={serverConfig !== null}
@@ -3964,9 +3955,6 @@ export default function ChatView(props: ChatViewProps) {
                                   (activeThreadShell ?? activeThread)?.pullRequests
                                 }
                                 onComposerOverlayHeightChange={publishComposerOverlayHeightStable}
-                                permissionsShownInStrip={
-                                  showComposerContextStrip && !isServerThread
-                                }
                                 promptRef={promptRef}
                                 composerImagesRef={composerImagesRef}
                                 composerFilesRef={composerFilesRef}
@@ -4021,7 +4009,7 @@ export default function ChatView(props: ChatViewProps) {
                             className="relative z-0"
                           >
                             {showComposerContextStrip && (
-                              <div className="pointer-events-auto">
+                              <div className="pointer-events-auto relative before:pointer-events-none before:absolute before:inset-x-[calc(50%-50vw)] before:top-0 before:-bottom-(--chat-composer-bottom-inset) before:-z-1 before:bg-background">
                                 <BranchToolbar
                                   forceNewWorktree={multipleModelSelections !== null}
                                   ref={branchToolbarRef}
@@ -4062,22 +4050,23 @@ export default function ChatView(props: ChatViewProps) {
                                       : undefined
                                   }
                                   availableEnvironments={logicalProjectEnvironments}
-                                  {...(isServerThread
-                                    ? {}
-                                    : {
-                                        trailing: (
-                                          <ComposerContextPermissions
-                                            environmentId={environmentId}
-                                            runtimeMode={runtimeMode}
-                                            supportedRuntimeModes={draftSupportedRuntimeModes(
+                                  trailing={
+                                    <ComposerContextPermissions
+                                      environmentId={environmentId}
+                                      runtimeMode={runtimeMode}
+                                      supportedRuntimeModes={
+                                        isServerThread
+                                          ? activeProviderStatus?.supportedRuntimeModes
+                                          : draftSupportedRuntimeModes(
                                               activeProviderStatus?.supportedRuntimeModes,
                                               multipleModelSelections,
                                               providerStatuses,
-                                            )}
-                                            onRuntimeModeChange={handleRuntimeModeChangeStable}
-                                          />
-                                        ),
-                                      })}
+                                            )
+                                      }
+                                      onRuntimeModeChange={handleRuntimeModeChangeStable}
+                                      disabled={!canOperateThread}
+                                    />
+                                  }
                                 />
                               </div>
                             )}
@@ -4093,10 +4082,7 @@ export default function ChatView(props: ChatViewProps) {
                         </div>
                       ) : null}
                     </div>
-                    <div
-                      aria-hidden
-                      className="h-[calc(env(safe-area-inset-bottom)+1rem)] sm:h-[calc(env(safe-area-inset-bottom)+1.25rem)]"
-                    />
+                    <div aria-hidden className="h-(--chat-composer-bottom-inset)" />
                   </div>
                 </div>
               </div>
