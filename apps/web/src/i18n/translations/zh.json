@@ -12190,5 +12190,11 @@
   "0fec319a8820e93a": "{count, plural, one {{count} banked reset} other {{count} banked resets}}",
   "cb0852f8e19d3e46": "{provider}: {windows}",
   "810e69d8207012d8": "No matching models.",
-  "d6d9fc563f9c484e": "in project"
+  "d6d9fc563f9c484e": "in project",
+  "44588d4ef408bfa0": "请登录与此设备关联的 T3 Connect 账号。",
+  "5f08f0994dfe385a": "设备名称",
+  "8da596a52355d32a": "此设备与 T3 Code 客户端共享的名称。留空则使用系统名称。",
+  "cc44af9fe27dff46": "T3 Connect 中的设备名称",
+  "5c5dd80c9a6da5ab": "设备名称已发布",
+  "49beca38ef9df348": "发布名称"
 }
