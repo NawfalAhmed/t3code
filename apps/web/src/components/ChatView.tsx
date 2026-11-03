@@ -245,6 +245,7 @@ import {
   useEnvironment,
   useEnvironmentProviders,
   useEnvironments,
+  useLinkOriginLabel,
   usePrimaryEnvironment,
 } from "../state/environments";
 import {
@@ -857,6 +858,7 @@ export default function ChatView(props: ChatViewProps) {
   // A linked environment's agent may have delegated this thread from there.
   const delegatedFrom = activeThread?.delegatedFrom ?? null;
   const delegatedFromEnvironment = useEnvironment(delegatedFrom?.environmentId ?? null);
+  const linkOriginLabel = useLinkOriginLabel(serverThread?.linkOrigin?.label ?? null);
   const delegatedFromRef =
     delegatedFrom === null
       ? null
@@ -3353,7 +3355,7 @@ export default function ChatView(props: ChatViewProps) {
               activeThreadId={activeThread.id}
               isServerThread={isServerThread}
               activeThreadTitle={activeThread.title}
-              activeThreadLinkOrigin={activeThreadShell?.linkOrigin?.label ?? null}
+              activeThreadLinkOrigin={linkOriginLabel}
               activeProject={activeProject ?? null}
               parentThreadLink={headerParentThreadLink}
               onOpenThread={onOpenRelatedThreadStable}
