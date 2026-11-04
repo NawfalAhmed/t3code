@@ -19,6 +19,7 @@ import {
 } from "./threadDetailsCardLayout";
 import { observeResize } from "../../lib/observeResize";
 import { requestWorkspaceFocus } from "../../lib/workspaceFocus";
+import { usePanelAnimationSettings, usePanelPresence } from "../../panelAnimations";
 
 export function ThreadDetailsCard({
   threadRef,
@@ -50,6 +51,15 @@ export function ThreadDetailsCard({
   );
   const popoverOpen = useRightPanelStore((state) =>
     selectThreadPanelOpen(state.threadPanelVisibilityByThreadKey, threadRef, "popover"),
+  );
+  const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
+    usePanelAnimationSettings();
+  const inlinePresence = usePanelPresence(
+    mode === "inline" && inlineOpen,
+    placement,
+    panelAnimationsActive && mode === "inline",
+    `${threadRef.environmentId}:${threadRef.threadId}`,
+    panelAnimationDurationMs,
   );
   const measurementKey = `${threadRef.environmentId}:${threadRef.threadId}:${preferredPlacement?.width ?? "popup"}:${contentKey}`;
   const [measurements, setMeasurements] = useState({
@@ -176,14 +186,21 @@ export function ThreadDetailsCard({
         useRightPanelStore.getState().setThreadPanelOpen(threadRef, "popover", open);
       }}
     >
-      {placement && inlineOpen ? (
+      {placement && inlinePresence.present ? (
         <aside
           {...detailsArea}
           data-workspace-focus-key={`details:${threadRef.environmentId}:${threadRef.threadId}`}
+          data-workspace-unavailable={!inlineOpen || undefined}
+          aria-hidden={!inlineOpen || undefined}
+          inert={!inlineOpen}
           // Skip the return transition to avoid overlapping the rising preview.
           className={cn(
             "absolute z-20",
-            topInset > 0 && "transition-[top] duration-150 ease-out motion-reduce:transition-none",
+            "[[data-panel-animations=true]_&]:transition-[opacity,translate] [[data-panel-animations=true]_&]:duration-(--panel-animation-duration) [[data-panel-animations=true]_&]:ease-out",
+            topInset > 0 && "[[data-panel-animations=true]_&]:transition-[top,opacity,translate]",
+            inlineOpen
+              ? "[[data-panel-animations=true]_&]:starting:translate-x-4 [[data-panel-animations=true]_&]:starting:opacity-0"
+              : "pointer-events-none translate-x-4 opacity-0",
           )}
           style={{
             right: placement.right,
@@ -197,10 +214,19 @@ export function ThreadDetailsCard({
           {card}
         </aside>
       ) : null}
-      {placement && inlineOpen && footerLayout ? (
+      {placement && inlinePresence.present && footerLayout ? (
         <div
           ref={setFooterElement}
-          className={cn("absolute z-20", !footerLayout.visible && "invisible")}
+          aria-hidden={!inlineOpen || undefined}
+          inert={!inlineOpen}
+          className={cn(
+            "absolute z-20",
+            "[[data-panel-animations=true]_&]:transition-[opacity,translate] [[data-panel-animations=true]_&]:duration-(--panel-animation-duration) [[data-panel-animations=true]_&]:ease-out",
+            inlineOpen
+              ? "[[data-panel-animations=true]_&]:starting:translate-x-4 [[data-panel-animations=true]_&]:starting:opacity-0"
+              : "pointer-events-none translate-x-4 opacity-0",
+            !footerLayout.visible && "invisible",
+          )}
           style={{
             right: placement.right,
             bottom: (canvas?.container.height ?? 0) - footerLayout.bottom,

@@ -7,6 +7,7 @@ import { selectThreadPanelOpen, useRightPanelStore } from "../../rightPanelStore
 import { observeResize } from "../../lib/observeResize";
 import { DRAFT_HERO_TRANSITION_ANIMATION_ID } from "./draftHeroTransition";
 import type { ScopedThreadRef } from "@t3tools/contracts";
+import { usePanelAnimationSettings } from "../../panelAnimations";
 
 export function ChatCanvas({
   store,
@@ -102,6 +103,33 @@ export function ChatCanvas({
     preview,
     detailsCardInlineOpen,
   });
+  const { active: panelAnimationsActive } = usePanelAnimationSettings();
+  const layoutKey = [
+    threadRef?.environmentId,
+    threadRef?.threadId,
+    measurements.width,
+    measurements.height,
+    detailsCardTopInset,
+    preview?.key,
+    preview?.width,
+    preview?.position?.x,
+    preview?.position?.y,
+    preview?.source.width,
+    preview?.source.height,
+  ].join(":");
+  const [laneTransition, setLaneTransition] = useState({
+    layoutKey,
+    open: detailsCardInlineOpen,
+    enabled: false,
+  });
+  if (laneTransition.layoutKey !== layoutKey || laneTransition.open !== detailsCardInlineOpen) {
+    setLaneTransition({
+      layoutKey,
+      open: detailsCardInlineOpen,
+      enabled:
+        laneTransition.layoutKey === layoutKey && laneTransition.open !== detailsCardInlineOpen,
+    });
+  }
   const context = {
     container: model.container,
     lane: model.lane,
@@ -123,6 +151,7 @@ export function ChatCanvas({
         {...props}
         ref={elementRef}
         data-chat-canvas
+        data-chat-layout-animations={(panelAnimationsActive && laneTransition.enabled) || undefined}
         data-preview-overlaps-chat={layout.overlapsChat || undefined}
         className="relative flex min-h-0 min-w-0 flex-1 flex-col"
         style={
