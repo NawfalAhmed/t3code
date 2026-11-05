@@ -23,10 +23,11 @@ import {
 } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import type { NodeType, ResolvedPos } from "@tiptap/pm/model";
-import type {
-  AssistantCitation,
-  ComposerContextClipboardFragment,
-  ServerProviderSkill,
+import {
+  ASSISTANT_CITATION_MAX_COMMENT_LENGTH,
+  type AssistantCitation,
+  type ComposerContextClipboardFragment,
+  type ServerProviderSkill,
 } from "@t3tools/contracts";
 import {
   serializeAssistantCitation,
@@ -45,7 +46,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
   type RefObject,
 } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -57,6 +57,7 @@ import {
   pastedPathQueryLength,
 } from "~/composer-logic";
 import { useStableCallback } from "~/hooks/useStableCallback";
+import { textDirection } from "~/textDirection";
 import { caretLineDirection, ComposerTextDirectionExtension } from "~/composer-text-direction";
 import {
   collapseShownMarkdownSource,
@@ -113,7 +114,7 @@ import { basenameOfPath } from "~/pierre-icons";
 import { WorkspaceEntryTooltip } from "./chat/WorkspaceEntryIcon";
 import { FileTagChipContent } from "./chat/FileTagChip";
 import { SkillChipPopover, skillPopoverDescription } from "./chat/SkillInlineText";
-import { AssistantCitationChip } from "./chat/AssistantCitationChip";
+import { AssistantCitationBlock } from "./chat/AssistantCitationBlock";
 import { getTimelinePageScrollKey } from "./chat/pageScrollController";
 import { ContextChip } from "./ContextChip";
 import {
@@ -121,10 +122,8 @@ import {
   ComposerContextReferenceChip,
   ComposerContextRecordsContext,
 } from "./composerContextPresentation";
-import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { ComposerCodeBlockNodeView } from "./chat/ComposerCodeBlockNodeView";
-import { resolveAssistantCitationCommentDismissal } from "./chat/assistantCitationCommentDismissal";
 import { composerCodeBlockHighlight } from "./composerCodeBlockHighlight";
 import { importPastedComposerText } from "./composerInlineTokenPaste";
 import { didComposerSelectionChangeVisibly } from "./composerSelection";
@@ -135,7 +134,7 @@ export interface ComposerPromptEditorHandle {
   focusAt: (cursor: number) => void;
   focusAtEnd: () => void;
   readSelectionRange: () => { start: number; end: number };
-  requestCitationComment: (request: ComposerCitationCommentRequest) => void;
+  focusCitationComment: (request: ComposerCitationCommentRequest) => void;
   readSnapshot: () => {
     value: string;
     cursor: number;
@@ -188,29 +187,18 @@ export interface ComposerPromptEditorProps {
 }
 
 export type ComposerCitationCommentRequest = {
-  previousValue: string;
   value: string;
   citationStart: number;
-  sourceAnchor: AssistantCitationSourceAnchor;
-  insertedSpaces: CitationInsertedSpaces;
-};
-
-type CitationInsertedSpaces = { before: boolean; after: boolean };
-
-type OpenCitationComment = {
-  key: string;
-  sourceAnchor?: AssistantCitationSourceAnchor;
-  removeOnCancel?: CitationInsertedSpaces;
 };
 
 const ComposerCitationCommentContext = createContext<{
-  openComment: OpenCitationComment | null;
-  onOpenChange: (citeKey: string, open: boolean) => void;
-  onDraftChange: (citeKey: string, comment: string) => void;
+  focusKey: string | null;
+  onFocused: (citeKey: string) => void;
+  onDraftChange: (citeKey: string, comment: string | null) => void;
   onSubmitAndSend: () => void;
 }>({
-  openComment: null,
-  onOpenChange: () => {},
+  focusKey: null,
+  onFocused: () => {},
   onDraftChange: () => {},
   onSubmitAndSend: () => {},
 });
@@ -385,7 +373,8 @@ const ComposerCitationExtension = Node.create({
     return ["span", { "data-composer-citation": "", ...HTMLAttributes }];
   },
   addNodeView() {
-    return ReactNodeViewRenderer(ComposerCitationNodeView);
+    // The block owns its clicks; a node selection paints stray highlight bars around it.
+    return ReactNodeViewRenderer(ComposerCitationNodeView, { stopEvent: () => true });
   },
 });
 
@@ -393,98 +382,108 @@ function ComposerCitationNodeView({ node, editor, getPos }: NodeViewProps) {
   const commentContext = use(ComposerCitationCommentContext);
   const citation = node.attrs.citation as AssistantCitation;
   const citeKey = node.attrs.citeKey as string;
-  const commentTarget =
-    commentContext.openComment?.key === citeKey ? commentContext.openComment : null;
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [draft, setDraft] = useState<string | null>(null);
+  const focusRequested = commentContext.focusKey === citeKey;
 
-  const nodePos = () => {
-    const pos = typeof getPos === "function" ? getPos() : null;
-    return typeof pos === "number" ? pos : null;
-  };
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- moves DOM focus into a freshly cited block's comment field
+  useEffect(() => {
+    if (!focusRequested) return;
+    inputRef.current?.focus({ preventScroll: true });
+    inputRef.current?.scrollIntoView({ block: "nearest" });
+    commentContext.onFocused(citeKey);
+  }, [citeKey, commentContext, focusRequested]);
 
-  const onSaveComment = (comment: string): boolean => {
-    if (!editor.isEditable) return false;
-    const pos = nodePos();
-    if (pos === null) return false;
+  // Blur can fire while a rewrite tears this view down, so confirm the node is still ours.
+  const currentNode = () => {
+    const pos = typeof getPos === "function" ? getPos() : undefined;
+    if (typeof pos !== "number" || pos >= editor.state.doc.content.size) return null;
     const current = editor.state.doc.nodeAt(pos);
-    if (!current || current.type.name !== "composer-citation") return false;
-    const currentCitation = current.attrs.citation as AssistantCitation;
-    const next = withAssistantCitationComment(currentCitation, comment);
-    const tr = editor.state.tr.setNodeMarkup(pos, undefined, {
-      ...current.attrs,
-      citation: next,
-      source: serializeAssistantCitation(next),
-    });
-    editor.view.dispatch(tr);
-    return true;
+    return current?.type.name === "composer-citation" && current.attrs.citeKey === citeKey
+      ? { pos, node: current }
+      : null;
   };
 
-  const removeOnCancel = commentTarget?.removeOnCancel;
-  const onRemove = () => {
-    if (!editor.isEditable || !removeOnCancel) return;
-    const pos = nodePos();
-    if (pos === null) return;
-    const { doc } = editor.state;
-    const current = doc.nodeAt(pos);
-    if (!current) return;
-    const end = pos + current.nodeSize;
-    const from = removeOnCancel.before && doc.textBetween(pos - 1, pos) === " " ? pos - 1 : pos;
-    const to = removeOnCancel.after && doc.textBetween(end, end + 1) === " " ? end + 1 : end;
-    editor.chain().focus().deleteRange({ from, to }).run();
+  const commitDraft = () => {
+    if (draft === null) return;
+    setDraft(null);
+    commentContext.onDraftChange(citeKey, null);
+    const target = editor.isEditable ? currentNode() : null;
+    if (!target) return;
+    const currentCitation = target.node.attrs.citation as AssistantCitation;
+    if (draft.trim() === (currentCitation.comment ?? "")) return;
+    const next = withAssistantCitationComment(currentCitation, draft);
+    editor.view.dispatch(
+      editor.state.tr.setNodeMarkup(target.pos, undefined, {
+        ...target.node.attrs,
+        citation: next,
+        source: serializeAssistantCitation(next),
+      }),
+    );
   };
 
-  const onRestoreFocus = () => {
-    if (!editor.isEditable) return;
-    const pos = nodePos();
-    if (pos === null) return;
-    const current = editor.state.doc.nodeAt(pos);
-    if (!current || current.type.name !== "composer-citation") return;
-    editor.commands.focus(pos + current.nodeSize);
+  const focusAfter = () => {
+    const target = currentNode();
+    if (target) editor.commands.focus(target.pos + target.node.nodeSize);
   };
 
+  const remove = () => {
+    const target = editor.isEditable ? currentNode() : null;
+    if (!target) return;
+    const end = target.pos + target.node.nodeSize;
+    const to = editor.state.doc.textBetween(end, end + 1) === " " ? end + 1 : end;
+    editor.chain().focus().deleteRange({ from: target.pos, to }).run();
+  };
+
+  const comment = draft ?? citation.comment ?? "";
   return (
     <NodeViewWrapper
       as="span"
-      className={CHIP_NODE_SELECTION_CLASS_NAME}
+      className="block select-none"
       contentEditable={false}
       spellCheck={false}
-      data-composer-citation-chip="true"
-      onKeyDown={(event: ReactKeyboardEvent<HTMLElement>) => {
-        if (
-          !editor.isEditable ||
-          event.key !== "Tab" ||
-          event.shiftKey ||
-          event.altKey ||
-          event.metaKey ||
-          event.ctrlKey ||
-          !(event.target instanceof HTMLElement) ||
-          event.target.dataset.citationCommentTrigger === undefined
-        ) {
-          return;
-        }
-        event.preventDefault();
-        onRestoreFocus();
-      }}
     >
-      <AssistantCitationChip
+      <AssistantCitationBlock
         citation={citation}
-        composer
-        commentEditor={{
-          open: commentTarget !== null,
-          sourceAnchor: commentTarget?.sourceAnchor,
-          onOpenChange: (open) => {
-            if (open && !editor.isEditable) return;
-            commentContext.onOpenChange(citeKey, open);
-          },
-          ...(removeOnCancel ? { onCancel: onRemove } : {}),
-          onSave: onSaveComment,
-          onDraftChange: (comment) => commentContext.onDraftChange(citeKey, comment),
-          onSaveAndSend: (comment) => {
-            if (!onSaveComment(comment)) return false;
-            commentContext.onSubmitAndSend();
-            return true;
-          },
-          onRestoreFocus,
-        }}
+        onRemove={editor.isEditable ? remove : undefined}
+        comment={
+          <textarea
+            ref={inputRef}
+            data-citation-comment="true"
+            aria-label="Citation comment"
+            aria-description="Enter to finish; Command/Ctrl+Enter to send; Shift+Enter for a new line."
+            placeholder="Add a comment"
+            rows={1}
+            maxLength={ASSISTANT_CITATION_MAX_COMMENT_LENGTH}
+            readOnly={!editor.isEditable}
+            dir={textDirection(comment)}
+            value={comment}
+            className="field-sizing-content block w-full resize-none bg-transparent p-0 outline-none select-text placeholder:text-muted-foreground"
+            onChange={(event) => {
+              setDraft(event.currentTarget.value);
+              commentContext.onDraftChange(citeKey, event.currentTarget.value);
+            }}
+            onBlur={commitDraft}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+              const plain = !event.shiftKey && !event.altKey;
+              if (event.key === "Enter" && plain && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                commitDraft();
+                commentContext.onSubmitAndSend();
+              } else if (
+                (event.key === "Enter" && plain && !event.metaKey && !event.ctrlKey) ||
+                event.key === "Escape" ||
+                (event.key === "Tab" && !event.shiftKey)
+              ) {
+                event.preventDefault();
+                commitDraft();
+                focusAfter();
+              }
+            }}
+          />
+        }
       />
     </NodeViewWrapper>
   );
@@ -924,24 +923,21 @@ function ComposerPromptEditorTiptapInner(
   const isApplyingControlledUpdateRef = useRef(false);
   const hasAppliedControlledSelectionRef = useRef(false);
   const citationRequestRef = useRef<ComposerCitationCommentRequest | null>(null);
-  const [openCitation, setOpenCitation] = useState<OpenCitationComment | null>(null);
+  const [focusCitationKey, setFocusCitationKey] = useState<string | null>(null);
   const citationDraftRef = useRef<{ key: string; comment: string } | null>(null);
   const [isEmpty, setIsEmpty] = useState(value.length === 0);
 
   const citationCommentActions = {
-    openComment: openCitation,
-    onOpenChange: (nodeKey: string, open: boolean) => {
-      if (!open && citationDraftRef.current?.key === nodeKey) citationDraftRef.current = null;
-      setOpenCitation((current) => {
-        if (open) {
-          if (current?.key === nodeKey) return current;
-          return { key: nodeKey };
-        }
-        return current?.key === nodeKey ? null : current;
-      });
+    focusKey: focusCitationKey,
+    onFocused: (nodeKey: string) => {
+      setFocusCitationKey((current) => (current === nodeKey ? null : current));
     },
-    onDraftChange: (nodeKey: string, comment: string) => {
-      citationDraftRef.current = { key: nodeKey, comment };
+    onDraftChange: (nodeKey: string, comment: string | null) => {
+      if (comment !== null) {
+        citationDraftRef.current = { key: nodeKey, comment };
+      } else if (citationDraftRef.current?.key === nodeKey) {
+        citationDraftRef.current = null;
+      }
     },
     onSubmitAndSend: onCitationSubmitAndSend ?? (() => {}),
   };
@@ -1140,7 +1136,7 @@ function ComposerPromptEditorTiptapInner(
               return true;
             }
           }
-          // Native tab order skips citation comment buttons inside the editor.
+          // Native tab order skips citation comment fields inside the editor.
           if (
             event.key === "Tab" &&
             event.shiftKey &&
@@ -1153,14 +1149,14 @@ function ComposerPromptEditorTiptapInner(
             const citation = $from.nodeBefore;
             if (citation?.type.name === "composer-citation") {
               const chip = view.nodeDOM($from.pos - citation.nodeSize);
-              const commentButton =
+              const commentField =
                 chip instanceof HTMLElement
-                  ? chip.querySelector<HTMLElement>("[data-citation-comment-trigger]")
+                  ? chip.querySelector<HTMLElement>("[data-citation-comment]")
                   : null;
-              if (commentButton) {
+              if (commentField) {
                 event.preventDefault();
                 event.stopPropagation();
-                commentButton.focus();
+                commentField.focus();
                 return true;
               }
             }
@@ -1458,13 +1454,8 @@ function ComposerPromptEditorTiptapInner(
     if (!target) return;
     const { node, pos } = target;
     const citation = node.attrs.citation as AssistantCitation;
-    const dismissal = resolveAssistantCitationCommentDismissal({
-      reason: "none",
-      draft: draft.comment,
-      savedComment: citation.comment,
-    });
-    if (dismissal.kind !== "commit") return;
-    const next = withAssistantCitationComment(citation, dismissal.comment);
+    if (draft.comment.trim() === (citation.comment ?? "")) return;
+    const next = withAssistantCitationComment(citation, draft.comment);
     current.view.dispatch(
       current.state.tr
         .setNodeMarkup(pos, undefined, {
@@ -1538,13 +1529,7 @@ function ComposerPromptEditorTiptapInner(
       if (target) {
         const node = editor.state.doc.nodeAt(target.pmPos);
         const citeKey = (node?.attrs as { citeKey?: string } | undefined)?.citeKey;
-        if (citeKey) {
-          setOpenCitation({
-            key: citeKey,
-            sourceAnchor: pendingCitation.sourceAnchor,
-            removeOnCancel: pendingCitation.insertedSpaces,
-          });
-        }
+        if (citeKey) setFocusCitationKey(citeKey);
       }
     }
     queueMicrotask(() => {
@@ -1639,7 +1624,7 @@ function ComposerPromptEditorTiptapInner(
         readSnapshot();
         return selectionRangeRef.current;
       },
-      requestCitationComment: (request) => {
+      focusCitationComment: (request) => {
         citationRequestRef.current = request;
         if (!editor) return;
         const map = serializeEditorDoc(editor.state.doc);
@@ -1655,11 +1640,7 @@ function ComposerPromptEditorTiptapInner(
         const citeKey = (node?.attrs as { citeKey?: string } | undefined)?.citeKey;
         if (citeKey) {
           citationRequestRef.current = null;
-          setOpenCitation({
-            key: citeKey,
-            sourceAnchor: request.sourceAnchor,
-            removeOnCancel: request.insertedSpaces,
-          });
+          setFocusCitationKey(citeKey);
         }
       },
       readSnapshot,

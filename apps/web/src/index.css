@@ -673,9 +673,6 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
       transparent
     );
   }
-  ::highlight(t3-assistant-citation-comment) {
-    background-color: color-mix(in oklab, var(--primary) 45%, transparent);
-  }
   :root {
     /* Keep the original T3 Code artwork palettes as the defaults. Built-in
        themes override them with their own pigments in the components layer. */
@@ -2037,8 +2034,13 @@ code {
   text-decoration: none;
 }
 
-/* File links and context chips own their color and focus ring. */
-.chat-markdown a:not(.chat-markdown-file-link, :has([data-slot="context-chip-label"])) {
+/* File links, context chips, and citation quotes own their color and focus ring. */
+.chat-markdown
+  a:not(
+    .chat-markdown-file-link,
+    :has([data-slot="context-chip-label"]),
+    [data-slot="assistant-citation-quote"]
+  ) {
   color: var(--info-foreground);
 }
 
@@ -2046,12 +2048,14 @@ code {
   a:not(
     .chat-markdown-file-link,
     :has([data-slot="context-chip-label"]),
+    [data-slot="assistant-citation-quote"],
     [data-markdown-image-link]
   ):hover,
 .chat-markdown
   a:not(
     .chat-markdown-file-link,
     :has([data-slot="context-chip-label"]),
+    [data-slot="assistant-citation-quote"],
     [data-markdown-image-link]
   ):focus-visible {
   background-image: radial-gradient(circle, currentcolor 0.75px, transparent 1px);

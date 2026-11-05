@@ -136,7 +136,6 @@ import {
   useAttachmentUploadStore,
 } from "../../lib/attachmentUploadQueue";
 import { attachmentUploadBlockReason } from "../../lib/attachmentUploadState";
-import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
 import { shortcutLabelForCommand } from "../../keybindings";
 import {
   type TerminalContextDraft,
@@ -151,7 +150,6 @@ import {
   shouldUseCompactComposerFooter,
 } from "../composerFooterLayout";
 import {
-  type ComposerCitationCommentRequest,
   type ComposerPromptEditorHandle,
   ComposerPromptEditorTiptap as ComposerPromptEditor,
 } from "../ComposerPromptEditorTiptap";
@@ -302,10 +300,7 @@ export interface ChatComposerHandle {
     options?: { ensureLeadingBoundary?: boolean; clipboardData?: DataTransfer },
   ) => boolean;
   pasteTextAtEnd: (text: string, options?: { bypassAutoAttachment?: boolean }) => boolean;
-  citeAssistantText: (
-    citation: AssistantCitation,
-    sourceAnchor: AssistantCitationSourceAnchor,
-  ) => boolean;
+  citeAssistantText: (citation: AssistantCitation) => boolean;
   openModelPicker: () => void;
   stepReasoningEffort: (direction: 1 | -1) => void;
   toggleModelPicker: () => void;
@@ -1787,11 +1782,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       expectedText?: string;
       expandedCursorAfterReplace?: number;
       focusEditorAfterReplace?: boolean;
-      citationComment?: {
-        start: number;
-        sourceAnchor: AssistantCitationSourceAnchor;
-        insertedSpaces: ComposerCitationCommentRequest["insertedSpaces"];
-      };
+      focusCitationCommentAt?: number;
     },
   ): boolean => {
     if (
@@ -1820,13 +1811,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       nextCursor,
       isLiteralPendingAnswer,
     );
-    if (options?.citationComment) {
-      composerEditorRef.current?.requestCitationComment({
-        previousValue: currentText,
+    if (options?.focusCitationCommentAt !== undefined) {
+      composerEditorRef.current?.focusCitationComment({
         value: next.text,
-        citationStart: options.citationComment.start,
-        sourceAnchor: options.citationComment.sourceAnchor,
-        insertedSpaces: options.citationComment.insertedSpaces,
+        citationStart: options.focusCitationCommentAt,
       });
     }
     promptRef.current = next.text;
@@ -2461,7 +2449,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     position: "cursor" | "end",
     options?: {
       ensureLeadingBoundary?: boolean;
-      citationCommentAnchor?: AssistantCitationSourceAnchor;
+      focusCitationComment?: boolean;
       clipboardData?: DataTransfer;
     },
   ): boolean => {
@@ -2470,7 +2458,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       activePendingIsResponding ||
       (pendingUserInputs.length > 0 && !activePendingProgress?.activeQuestion) ||
       projectSelectionRequired ||
-      (options?.citationCommentAnchor && !composerEditorRef.current)
+      (options?.focusCitationComment && !composerEditorRef.current)
     ) {
       return false;
     }
@@ -2488,13 +2476,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       cursor,
       rangeEnd,
       needsLeadingSpace ? ` ${text}` : text,
-      options?.citationCommentAnchor
+      options?.focusCitationComment
         ? {
-            citationComment: {
-              start: cursor + (needsLeadingSpace ? 1 : 0),
-              sourceAnchor: options.citationCommentAnchor,
-              insertedSpaces: { before: needsLeadingSpace, after: rangeEnd === cursor },
-            },
+            focusCitationCommentAt: cursor + (needsLeadingSpace ? 1 : 0),
             focusEditorAfterReplace: false,
           }
         : undefined,
@@ -2915,11 +2899,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         focusComposer();
         return true;
       },
-      citeAssistantText: (citation, sourceAnchor) =>
+      citeAssistantText: (citation) =>
         insertComposerTextStable(
           formatAssistantCitationForComposer(citation, citation.comment),
           "cursor",
-          { ensureLeadingBoundary: true, citationCommentAnchor: sourceAnchor },
+          { ensureLeadingBoundary: true, focusCitationComment: true },
         ),
       openModelPicker: openModelPickerStable,
       stepReasoningEffort: (direction) => {
