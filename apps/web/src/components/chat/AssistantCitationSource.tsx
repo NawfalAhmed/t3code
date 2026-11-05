@@ -1,10 +1,7 @@
 import type { LegendListRef } from "@legendapp/list/react";
 import type { AssistantCitation, MessageId, ScopedThreadRef } from "@t3tools/contracts";
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
-import {
-  resolveAssistantCitationRange,
-  type AssistantCitationSourceAnchor,
-} from "~/lib/assistantTextSelection";
+import { resolveAssistantCitationRange } from "~/lib/assistantTextSelection";
 import { toastManager } from "../ui/toast";
 import { observeResize } from "~/lib/observeResize";
 
@@ -15,73 +12,6 @@ const CITATION_HIGHLIGHT_TOTAL_MS =
   1.5 * CITATION_PULSE_DURATION_MS + CITATION_HIGHLIGHT_HOLD_MS + CITATION_HIGHLIGHT_FADE_MS;
 const CITATION_HIGHLIGHT_OPACITY = "--assistant-citation-highlight-opacity";
 const CITATION_HIGHLIGHT_PEAK = 0.45;
-const COMMENT_HIGHLIGHT_NAME = "t3-assistant-citation-comment";
-
-export function observeAssistantCitationCommentSource({
-  anchor,
-  citation,
-  onUnavailable,
-}: {
-  anchor: AssistantCitationSourceAnchor;
-  citation: AssistantCitation;
-  onUnavailable: () => void;
-}): () => void {
-  const { source, range, viewport } = anchor;
-  const registry = typeof CSS !== "undefined" ? CSS.highlights : undefined;
-  let highlight: Highlight | null = null;
-  let stopped = false;
-  const observer = new MutationObserver((records) => {
-    if (stopped) return;
-    const sourceChanged = records.some((record) => source.contains(record.target));
-    validate(sourceChanged);
-  });
-  const dispose = () => {
-    if (stopped) return;
-    stopped = true;
-    observer.disconnect();
-    if (!highlight) return;
-    highlight.delete(range);
-    if (highlight.size === 0 && registry?.get(COMMENT_HIGHLIGHT_NAME) === highlight) {
-      registry.delete(COMMENT_HIGHLIGHT_NAME);
-    }
-  };
-  const unavailable = () => {
-    if (stopped) return;
-    dispose();
-    onUnavailable();
-  };
-  const validate = (sourceChanged: boolean): boolean => {
-    if (!source.isConnected || !viewport.contains(source)) {
-      unavailable();
-      return false;
-    }
-    if (
-      sourceChanged ||
-      range.collapsed ||
-      !source.contains(range.startContainer) ||
-      !source.contains(range.endContainer)
-    ) {
-      const repaired = resolveAssistantCitationRange(source, citation);
-      if (!repaired) {
-        unavailable();
-        return false;
-      }
-      range.setStart(repaired.startContainer, repaired.startOffset);
-      range.setEnd(repaired.endContainer, repaired.endOffset);
-    }
-    return true;
-  };
-
-  if (!validate(false)) return dispose;
-  if (typeof Highlight !== "undefined" && registry) {
-    const existing = registry.get(COMMENT_HIGHLIGHT_NAME);
-    highlight = existing ?? new Highlight();
-    highlight.add(range);
-    if (!existing) registry.set(COMMENT_HIGHLIGHT_NAME, highlight);
-  }
-  observer.observe(viewport, { childList: true, subtree: true, characterData: true });
-  return dispose;
-}
 
 export interface AssistantCitationRequest {
   citation: AssistantCitation;

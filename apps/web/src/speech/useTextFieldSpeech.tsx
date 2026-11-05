@@ -67,9 +67,12 @@ export type TextFieldSpeech = ReturnType<typeof useTextFieldSpeech>;
 export function TextFieldSpeechControls({
   speech,
   disabled = false,
+  size,
 }: {
   speech: TextFieldSpeech;
   disabled?: boolean;
+  /** Inline fields pass "icon-micro" so the mic fits one line of text. */
+  size?: "icon-sm" | "icon-micro";
 }) {
   return (
     <>
@@ -98,6 +101,7 @@ export function TextFieldSpeechControls({
             progress={null}
             shortcutLabel={speech.shortcutLabel}
             disabled={disabled}
+            {...(size ? { size } : {})}
             onStart={() => void speech.start()}
             onCancel={speech.cancel}
           />

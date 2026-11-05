@@ -8,7 +8,6 @@ import { expect, it } from "vite-plus/test";
 
 import { page, userEvent } from "vite-plus/test/browser";
 
-import { findAssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
 import { act, render } from "../../test/render";
 import {
   ComposerPromptEditorTiptap as ComposerPromptEditor,
@@ -39,15 +38,6 @@ function Composer({
   const [answer, setAnswer] = useState("");
   return (
     <>
-      <div data-assistant-citation-viewport="">
-        <p
-          data-assistant-citation-source={citation.messageId}
-          data-assistant-citation-environment={citation.environmentId}
-          data-assistant-citation-thread={citation.threadId}
-        >
-          hello world
-        </p>
-      </div>
       <output data-prompt={prompt} data-answer={answer} />
       <ComposerPromptEditor
         editorRef={editorRef}
@@ -72,20 +62,14 @@ it("keeps an unsaved citation comment when a question takes the composer", async
   await using screen = await render(<Composer question={false} editorRef={editorRef} />);
   const drafts = () => screen.container.querySelector("output")?.dataset;
 
-  const sourceAnchor = findAssistantCitationSourceAnchor(document, citation);
-  if (!sourceAnchor) throw new Error("Citation source did not resolve");
   await act(async () =>
-    editorRef.current?.requestCitationComment({
-      previousValue: "See ",
+    editorRef.current?.focusCitationComment({
       value: promptBefore,
       citationStart: "See ".length,
-      sourceAnchor,
-      insertedSpaces: { before: false, after: true },
     }),
   );
-  const comment = page.getByLabelText("Comment on selected text");
-  await expect.element(comment).toBeVisible();
-  await comment.click();
+  const comment = page.getByLabelText("Citation comment");
+  await expect.element(comment).toHaveFocus();
   await userEvent.keyboard("check this");
 
   await screen.rerender(<Composer question editorRef={editorRef} />);
@@ -95,5 +79,5 @@ it("keeps an unsaved citation comment when a question takes the composer", async
   expect(drafts()?.prompt).toBe(
     `See ${serializeAssistantCitation(withAssistantCitationComment(citation, "check this"))} `,
   );
-  await expect.element(page.getByLabelText("Edit citation comment")).toBeInTheDocument();
+  await expect.element(page.getByLabelText("Citation comment")).toHaveValue("check this");
 });

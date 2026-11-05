@@ -179,6 +179,7 @@ export function ComposerSpeechButton(props: {
   progress: { downloaded: number; total: number } | null;
   shortcutLabel?: string | null;
   disabled?: boolean;
+  size?: "icon-sm" | "icon-micro";
   onStart(): void;
   onCancel(): void;
 }) {
@@ -193,7 +194,7 @@ export function ComposerSpeechButton(props: {
         render={
           <Button
             type="button"
-            size="icon-sm"
+            size={props.size ?? "icon-sm"}
             variant="ghost"
             aria-label={label}
             disabled={props.disabled}
