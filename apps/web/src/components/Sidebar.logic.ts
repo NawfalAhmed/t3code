@@ -1,6 +1,7 @@
 import type { EnvironmentServerConfig } from "@t3tools/client-runtime/connection";
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { resolveThreadWorkingStartedAt } from "@t3tools/client-runtime/state/models";
+import { isThreadWorking } from "@t3tools/client-runtime/state/thread-inbox";
 import { isShownUnderParent } from "@t3tools/client-runtime/state/threads";
 import { backgroundWorkHoldsCompletion } from "@t3tools/shared/orchestrationV2PendingBackgroundWork";
 import { threadPullRequestSearchTerms } from "@t3tools/shared/threadPullRequests";
@@ -1008,6 +1009,13 @@ export function resolveWindowTitleThreadStatus(thread: SidebarThreadStatusInput)
     default:
       return null;
   }
+}
+
+/** What the Waiting shelf folds away: threads monitoring background work or blocked on another thread. */
+export function isSidebarThreadWaiting(
+  thread: Parameters<typeof isThreadWorking>[0] & SidebarThreadStatusInput,
+): boolean {
+  return isThreadWorking(thread) && resolveSidebarThreadStatus(thread) === "waiting";
 }
 
 /**

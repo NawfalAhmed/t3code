@@ -14,6 +14,7 @@ import {
   orderItemsByPreferredIds,
   pinOrderKeyBetween,
   resolveSidebarSweepKeys,
+  isSidebarThreadWaiting,
   resolveSidebarThreadStatus,
   resolveThreadStatusPill,
   resolveWindowTitleThreadStatus,
@@ -1036,6 +1037,14 @@ describe("Working shelf (beta)", () => {
         runtime: { ...runtime, status: "failed" as const, lastError: "boom" },
       }),
     ).toBe(false);
+  });
+
+  it("folds away only waiting threads when the Waiting shelf replaces it", () => {
+    expect(isSidebarThreadWaiting(waiting)).toBe(true);
+    expect(isSidebarThreadWaiting({ ...idle, runtime, blockedOnThreadWait: true })).toBe(true);
+    expect(isSidebarThreadWaiting({ ...idle, runtime })).toBe(false);
+    expect(isSidebarThreadWaiting(idle)).toBe(false);
+    expect(isSidebarThreadWaiting({ ...waiting, hasPendingUserInput: true })).toBe(false);
   });
 
   it("keeps a ready plan in the inbox while background work runs", () => {

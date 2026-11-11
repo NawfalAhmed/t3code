@@ -490,6 +490,9 @@ export function useSettingsRestore(onRestored?: () => void) {
     ...(settings.sidebarWorkingShelfEnabled !== DEFAULT_UNIFIED_SETTINGS.sidebarWorkingShelfEnabled
       ? ["Working section"]
       : []),
+    ...(settings.sidebarWaitingShelfEnabled !== DEFAULT_UNIFIED_SETTINGS.sidebarWaitingShelfEnabled
+      ? ["Waiting section"]
+      : []),
     ...(settings.sidebarAutoSettleAfterDays !== DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleAfterDays
       ? ["Auto-settle inactive threads"]
       : []),
@@ -671,6 +674,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       sidebarProjectGroupingMode: DEFAULT_UNIFIED_SETTINGS.sidebarProjectGroupingMode,
       sidebarProjectSortOrder: DEFAULT_UNIFIED_SETTINGS.sidebarProjectSortOrder,
       sidebarWorkingShelfEnabled: DEFAULT_UNIFIED_SETTINGS.sidebarWorkingShelfEnabled,
+      sidebarWaitingShelfEnabled: DEFAULT_UNIFIED_SETTINGS.sidebarWaitingShelfEnabled,
       sidebarAutoSettleAfterDays: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleAfterDays,
       sidebarAutoSettleKeepPullRequests: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleKeepPullRequests,
       sidebarAutoSettleOnMerge: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleOnMerge,
@@ -914,6 +918,39 @@ export function GeneralSettingsPanel() {
                 updateSettings({ sidebarWorkingShelfEnabled: Boolean(checked) })
               }
               aria-label={gt("Working section")}
+            />
+          }
+        />
+        <SettingsRow
+          {...setting("waiting-shelf")}
+          description={
+            <T>
+              With the Working section off, fold only waiting threads, those monitoring background
+              work or waiting on another thread, into a Waiting section. Working threads stay in the
+              inbox.
+            </T>
+          }
+          resetAction={
+            settings.sidebarWaitingShelfEnabled !==
+            DEFAULT_UNIFIED_SETTINGS.sidebarWaitingShelfEnabled ? (
+              <SettingResetButton
+                label="waiting section"
+                onClick={() =>
+                  updateSettings({
+                    sidebarWaitingShelfEnabled: DEFAULT_UNIFIED_SETTINGS.sidebarWaitingShelfEnabled,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.sidebarWaitingShelfEnabled}
+              disabled={settings.sidebarWorkingShelfEnabled}
+              onCheckedChange={(checked) =>
+                updateSettings({ sidebarWaitingShelfEnabled: Boolean(checked) })
+              }
+              aria-label={gt("Waiting section")}
             />
           }
         />

@@ -203,6 +203,7 @@ import {
   sortPinnedThreadsForSidebar,
   sortThreadsForSidebar,
   sortWorkingThreadsBySend,
+  isSidebarThreadWaiting,
   useSnoozeWakeClock,
   threadShortcutContext,
   useThreadJumpHintsVisible,
@@ -356,6 +357,8 @@ interface SidebarThreadPartitionInput {
   readonly connectedEnvironmentIds: readonly EnvironmentId[];
   readonly optimisticDrop: SidebarOptimisticDrop | null;
   readonly workingShelfEnabled: boolean;
+  /** Folds only waiting threads into the shelf; working threads stay in the inbox. */
+  readonly waitingShelfEnabled: boolean;
   /** Boring mode: folders list active threads by the user's latest message. */
   readonly sortActiveBySend: boolean;
   // Snooze wakes, the queued-turn grace and the Working shelf's exit grace depend
@@ -440,9 +443,11 @@ function useSidebarThreads(input: {
     folderGroups,
     keepEmptyFolders: keepEmpty,
   } = input;
-  // Folders already separate the work, so boring mode has no Working shelf.
-  const workingShelfEnabled =
-    useClientSettings((s) => s.sidebarWorkingShelfEnabled) && folderGroups === null;
+  // Folders already separate the work, so boring mode has no Working or Waiting shelf.
+  const workingShelfSetting = useClientSettings((s) => s.sidebarWorkingShelfEnabled);
+  const waitingShelfSetting = useClientSettings((s) => s.sidebarWaitingShelfEnabled);
+  const workingShelfEnabled = workingShelfSetting && folderGroups === null;
+  const waitingShelfEnabled = !workingShelfSetting && waitingShelfSetting && folderGroups === null;
   const inboxReturnsVersion = useSyncExternalStore(
     inboxReturns.subscribe,
     inboxReturns.getSnapshot,
@@ -486,6 +491,7 @@ function useSidebarThreads(input: {
     connectedEnvironmentIds,
     optimisticDrop,
     workingShelfEnabled,
+    waitingShelfEnabled,
     sortActiveBySend: folderGroups !== null,
     clockKey: `${nowMinute}:${snoozeWakeClock}:${inboxReturnsVersion}`,
   });
@@ -567,6 +573,7 @@ function useSidebarThreads(input: {
     ...partition,
     threads,
     workingShelfEnabled,
+    waitingShelfEnabled,
     searchableThreads: [
       ...pinnedThreads,
       ...activeThreads,
@@ -621,6 +628,7 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
     serverConfigs,
     optimisticDrop,
     workingShelfEnabled,
+    waitingShelfEnabled,
     sortActiveBySend,
   } = input;
   const preciseNow = new Date().toISOString();
@@ -630,8 +638,9 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
   const active: EnvironmentThreadShell[] = [];
   const working: EnvironmentThreadShell[] = [];
   const inbox = (thread: EnvironmentThreadShell, manuallyMoved = false) =>
-    workingShelfEnabled &&
-    (manuallyMoved ? isThreadWorking(thread) : inboxObservation.isWorking(thread))
+    (workingShelfEnabled &&
+      (manuallyMoved ? isThreadWorking(thread) : inboxObservation.isWorking(thread))) ||
+    (waitingShelfEnabled && isSidebarThreadWaiting(thread))
       ? working
       : active;
   const snoozed: EnvironmentThreadShell[] = [];
@@ -1317,6 +1326,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
 
   const {
     workingShelfEnabled,
+    waitingShelfEnabled,
     pinnedThreads,
     draggableThreadKeys,
     activeReorderableThreadKeys,
@@ -3592,7 +3602,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                                 key="working-shelf-header"
                                 marker="working-header"
                                 className="mt-auto"
-                                label="Working"
+                                label={waitingShelfEnabled ? "Waiting" : "Working"}
                                 count={workingThreads.length}
                                 toggle={{
                                   expanded: workingShelfExpanded,

@@ -466,6 +466,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["hide fold running monitoring threads inbox sidebar shelf"],
   },
   {
+    id: "waiting-shelf",
+    title: msg("Waiting section"),
+    to: "/settings/general",
+    searchTerms: ["hide fold waiting monitoring background blocked threads inbox sidebar shelf"],
+  },
+  {
     id: "boring-sidebar",
     title: "Boring sidebar (group by project)",
     to: "/settings/labs",

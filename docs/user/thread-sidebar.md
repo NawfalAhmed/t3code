@@ -144,6 +144,9 @@ This is on by default. Turn it off with **Settings → General → Working secti
 or **Settings → General → Working section** on iOS and Android. Each device keeps its own
 choice.
 
+To keep working threads in the active list but still fold away threads that are only waiting, turn
+the Working section off and turn on **Settings → General → Waiting section** on web and desktop.
+
 While this is on, the active list is ordered by when each thread last came back to you, so you
 cannot drag or move threads within it. Your saved order returns when you turn it off.
 
