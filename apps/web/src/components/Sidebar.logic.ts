@@ -1,6 +1,10 @@
 import type { EnvironmentServerConfig } from "@t3tools/client-runtime/connection";
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
-import { resolveThreadWorkingStartedAt } from "@t3tools/client-runtime/state/models";
+import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
+import {
+  resolveThreadWorkingStartedAt,
+  threadRuntimeIsActive,
+} from "@t3tools/client-runtime/state/models";
 import { isShownUnderParent } from "@t3tools/client-runtime/state/threads";
 import { backgroundWorkHoldsCompletion } from "@t3tools/shared/orchestrationV2PendingBackgroundWork";
 import { threadPullRequestSearchTerms } from "@t3tools/shared/threadPullRequests";
@@ -189,9 +193,9 @@ export function useRetainedValue<T>(key: string | null, value: T | null): T | nu
 export const animateSidebarLayoutChanges: AnimateLayoutChanges = (args) =>
   args.isSorting ? defaultAnimateLayoutChanges(args) : false;
 
-// Snoozed rows cannot accept drops without a wake time. Working rows only drag out as chat context.
+// Snoozed rows cannot accept drops without a wake time. Working and Watching rows only drag out as chat context.
 
-export type SidebarSection = "pinned" | "active" | "working" | "snoozed" | "settled";
+export type SidebarSection = "pinned" | "active" | "working" | "watching" | "snoozed" | "settled";
 
 export function resolveSidebarThreadSection(input: {
   readonly snoozed: boolean;
@@ -212,6 +216,7 @@ export type SidebarListMarker =
   | "settled-placeholder"
   | "pinned-divider"
   | "working-header"
+  | "watching-header"
   | "snoozed-header"
   | "settled-header";
 
@@ -234,6 +239,7 @@ function sectionAtSidebarSlot(items: readonly SidebarListItem[], index: number):
     if (item.kind !== "marker") continue;
     if (item.marker === "pinned-divider") section = "active";
     else if (item.marker === "working-header") section = "working";
+    else if (item.marker === "watching-header") section = "watching";
     else if (item.marker === "snoozed-header") section = "snoozed";
     else if (item.marker === "settled-header") section = "settled";
   }
@@ -257,7 +263,7 @@ export function resolveSidebarDropTarget(
   const moved = items.filter((_, index) => index !== activeIndex);
   moved.splice(overIndex, 0, items[activeIndex]!);
   const section = sectionAtSidebarSlot(moved, overIndex);
-  if (section === "working" || section === "snoozed") return null;
+  if (section === "working" || section === "watching" || section === "snoozed") return null;
   const pinnedOrder: string[] = [];
   const activeOrder: string[] = [];
   let currentSection: SidebarSection = "pinned";
@@ -266,6 +272,7 @@ export function resolveSidebarDropTarget(
       if (item.marker === "pinned-divider") currentSection = "active";
       else if (
         item.marker === "working-header" ||
+        item.marker === "watching-header" ||
         item.marker === "snoozed-header" ||
         item.marker === "settled-header"
       )
@@ -305,7 +312,8 @@ export function resolveSidebarDropVerb(
   from: SidebarSection,
   to: SidebarSection | null,
 ): SidebarDropVerb | null {
-  if (to === null || to === from || to === "working" || to === "snoozed") return null;
+  if (to === null || to === from || to === "working" || to === "watching" || to === "snoozed")
+    return null;
   if (to === "pinned") return "pin";
   if (to === "settled") return "settle";
   if (from === "pinned") return "unpin";
@@ -390,7 +398,7 @@ export function planSidebarThreadDrop(input: {
     activeKeysById,
     activeReorderableKeys,
   } = input;
-  if (activeSection === "working") return { kind: "none" };
+  if (activeSection === "working" || activeSection === "watching") return { kind: "none" };
   if (input.supportsSettlement === false && (target.section === "settled" || activeSettled)) {
     return { kind: "none" };
   }
@@ -987,6 +995,48 @@ export function resolveWindowTitleThreadStatus(
     default:
       return null;
   }
+}
+
+export function resolveSidebarInboxSection(
+  thread: SidebarThreadStatusInput &
+    Pick<
+      SidebarThreadSummary,
+      "pullRequests" | "interactionMode" | "hasActionableProposedPlan" | "latestRun"
+    >,
+  { watchingEnabled, working }: { watchingEnabled: boolean; working: boolean },
+): "active" | "working" | "watching" {
+  if (
+    watchingEnabled &&
+    thread.pullRequests.some(
+      (link) =>
+        link.watch !== undefined &&
+        link.source !== "stack-dismissed" &&
+        (link.snapshot === null || link.snapshot.state === "open") &&
+        sourceControlClients.findByChangeRequestUrl(link.url)?.kind === "github",
+    )
+  ) {
+    if (
+      thread.hasPendingApprovals ||
+      thread.hasPendingUserInput ||
+      thread.pendingSubagentRequest != null ||
+      (thread.pendingGuestMessageCount ?? 0) > 0 ||
+      (thread.interactionMode === "plan" && thread.hasActionableProposedPlan) ||
+      thread.runtime?.status === "failed" ||
+      thread.latestRun?.status === "failed"
+    ) {
+      return "active";
+    }
+    if (
+      working &&
+      thread.pullRequests.some(
+        (link) => link.source !== "stack-dismissed" && link.watch?.until === "merged",
+      )
+    ) {
+      return "working";
+    }
+    if (!threadRuntimeIsActive(thread.runtime)) return "watching";
+  }
+  return working ? "working" : "active";
 }
 
 /**
