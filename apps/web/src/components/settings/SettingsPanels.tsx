@@ -547,6 +547,10 @@ export function useSettingsRestore(onRestored?: () => void) {
     ...(settings.sidebarWorkingShelfEnabled !== DEFAULT_UNIFIED_SETTINGS.sidebarWorkingShelfEnabled
       ? [gt("Working section")]
       : []),
+    ...(settings.sidebarWatchingShelfEnabled !==
+    DEFAULT_UNIFIED_SETTINGS.sidebarWatchingShelfEnabled
+      ? [gt("Watching section")]
+      : []),
     ...(settings.sidebarAutoSettleAfterDays !== DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleAfterDays
       ? [gt("Auto-settle inactive threads")]
       : []),
@@ -739,6 +743,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       sidebarProjectGroupingMode: DEFAULT_UNIFIED_SETTINGS.sidebarProjectGroupingMode,
       sidebarProjectSortOrder: DEFAULT_UNIFIED_SETTINGS.sidebarProjectSortOrder,
       sidebarWorkingShelfEnabled: DEFAULT_UNIFIED_SETTINGS.sidebarWorkingShelfEnabled,
+      sidebarWatchingShelfEnabled: DEFAULT_UNIFIED_SETTINGS.sidebarWatchingShelfEnabled,
       sidebarAutoSettleAfterDays: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleAfterDays,
       sidebarAutoSettleKeepPullRequests: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleKeepPullRequests,
       sidebarAutoSettleOnMerge: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleOnMerge,
@@ -982,6 +987,36 @@ export function GeneralSettingsPanel() {
                 updateSettings({ sidebarWorkingShelfEnabled: Boolean(checked) })
               }
               aria-label={gt("Working section")}
+            />
+          }
+        />
+        <SettingsRow
+          {...setting("watching-shelf")}
+          description={gt(
+            "Fold threads waiting for {host} pull request updates. Threads that need you return to the inbox.",
+            { host: "GitHub" },
+          )}
+          resetAction={
+            settings.sidebarWatchingShelfEnabled !==
+            DEFAULT_UNIFIED_SETTINGS.sidebarWatchingShelfEnabled ? (
+              <SettingResetButton
+                ariaLabel={gt("Reset watching section to default")}
+                onClick={() =>
+                  updateSettings({
+                    sidebarWatchingShelfEnabled:
+                      DEFAULT_UNIFIED_SETTINGS.sidebarWatchingShelfEnabled,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.sidebarWatchingShelfEnabled}
+              onCheckedChange={(checked) =>
+                updateSettings({ sidebarWatchingShelfEnabled: Boolean(checked) })
+              }
+              aria-label={gt("Watching section")}
             />
           }
         />

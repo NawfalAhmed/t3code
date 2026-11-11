@@ -323,6 +323,19 @@ describe("resolveIdleCompaction", () => {
   });
 });
 
+describe("ClientSettings Watching section", () => {
+  it("starts off for users who enabled the old Waiting section", () => {
+    const legacySettings = { sidebarWaitingShelfEnabled: true };
+    expect(decodeClientSettings(legacySettings)).toMatchObject({
+      sidebarWatchingShelfEnabled: false,
+    });
+    expect(decodeClientSettingsPatch(legacySettings)).toEqual({});
+    expect(
+      decodeClientSettings({ ...legacySettings, sidebarWatchingShelfEnabled: true }),
+    ).toMatchObject({ sidebarWatchingShelfEnabled: true });
+  });
+});
+
 describe("ClientSettings notifications", () => {
   it("requires opt-in when existing settings omit notification preferences", () => {
     expect(decodeClientSettings({}).notificationMode).toBe("off");

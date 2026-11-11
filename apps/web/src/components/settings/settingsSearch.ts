@@ -507,6 +507,14 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: [msg("hide fold running monitoring threads inbox sidebar shelf")],
   },
   {
+    id: "watching-shelf",
+    title: msg("Watching section"),
+    to: "/settings/general",
+    searchTerms: [
+      msg("hide fold waiting monitoring watch pull requests PR threads inbox sidebar shelf"),
+    ],
+  },
+  {
     id: "boring-sidebar",
     title: msg("Boring sidebar (group by project)"),
     to: "/settings/labs",

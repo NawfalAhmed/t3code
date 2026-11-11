@@ -18,6 +18,7 @@ import {
   pinOrderKeyBetween,
   resolveSidebarSweepKeys,
   resolveSidebarRowStatus,
+  resolveSidebarInboxSection,
   resolveSidebarThreadStatus,
   resolveThreadStatusPill,
   resolveWindowTitleThreadStatus,
@@ -49,7 +50,14 @@ import {
 } from "@t3tools/client-runtime/state/thread-sort";
 import { resolveProjectExpanded } from "../uiStateStore";
 import { threadSearchMatchKey } from "@t3tools/client-runtime/state/thread-search";
-import { EnvironmentId, ProjectId, ProviderInstanceId, RunId, ThreadId } from "@t3tools/contracts";
+import {
+  EnvironmentId,
+  ProjectId,
+  ProviderInstanceId,
+  RunId,
+  ThreadId,
+  type ThreadPullRequestLink,
+} from "@t3tools/contracts";
 
 import {
   DEFAULT_INTERACTION_MODE,
@@ -1116,6 +1124,106 @@ describe("Working shelf (beta)", () => {
     ).toBe(false);
   });
 
+  it("places passive GitHub watches in Watching independently of Working", () => {
+    const watchedPr = {
+      host: "github.com",
+      repository: "acme/app",
+      number: 7,
+      url: "https://github.com/acme/app/pull/7",
+      source: "agent",
+      linkedAt: runtime.updatedAt,
+      snapshot: null,
+      stack: null,
+      watch: {
+        startedAt: runtime.updatedAt,
+        headSha: null,
+        failedChecks: [],
+        passed: true,
+        passedChecks: [],
+        remarksThrough: runtime.updatedAt,
+        remarkIds: [],
+        conflicting: false,
+        wakes: 0,
+        checksPending: false,
+      },
+    } satisfies ThreadPullRequestLink;
+    const watched = { ...idle, pullRequests: [watchedPr] };
+    const watchingEnabled = true;
+    const inboxSection = (thread: Parameters<typeof resolveSidebarInboxSection>[0]) =>
+      resolveSidebarInboxSection(thread, { watchingEnabled, working: false });
+
+    expect(inboxSection(watched)).toBe("watching");
+    const checksRunning = { ...watchedPr, watch: { ...watchedPr.watch, checksPending: true } };
+    expect(inboxSection({ ...watched, pullRequests: [checksRunning] })).toBe("watching");
+    expect(resolveSidebarInboxSection(watched, { watchingEnabled, working: true })).toBe(
+      "watching",
+    );
+    expect(resolveSidebarInboxSection(watched, { watchingEnabled: false, working: true })).toBe(
+      "working",
+    );
+    const agentOwnedWatch = {
+      ...watchedPr,
+      watch: { ...watchedPr.watch, until: "merged" },
+    } as const;
+    expect(
+      resolveSidebarInboxSection(
+        { ...watched, pullRequests: [watchedPr, agentOwnedWatch] },
+        { watchingEnabled, working: true },
+      ),
+    ).toBe("working");
+    expect(inboxSection({ ...watched, runtime })).toBe("active");
+    expect(
+      resolveSidebarInboxSection({ ...watched, runtime }, { watchingEnabled, working: true }),
+    ).toBe("working");
+
+    for (const attention of [
+      { hasPendingUserInput: true },
+      { hasPendingApprovals: true },
+      { pendingSubagentRequest: "user_input" },
+      { pendingGuestMessageCount: 1 },
+      { interactionMode: "plan", hasActionableProposedPlan: true },
+      { latestRun: { ...idle.latestRun, status: "failed" } },
+    ] as const) {
+      expect(
+        resolveSidebarInboxSection(
+          { ...watched, ...attention },
+          { watchingEnabled, working: true },
+        ),
+      ).toBe("active");
+    }
+
+    const { watch: _watch, ...linkedOnly } = watchedPr;
+    expect(inboxSection({ ...watched, pullRequests: [linkedOnly, checksRunning] })).toBe(
+      "watching",
+    );
+    expect(inboxSection({ ...watched, pullRequests: [linkedOnly] })).toBe("active");
+    expect(inboxSection({ ...waiting, pullRequests: [] })).toBe("active");
+    expect(inboxSection({ ...idle, runtime, blockedOnThreadWait: true, pullRequests: [] })).toBe(
+      "active",
+    );
+    for (const state of ["closed", "merged"] as const) {
+      const closedPr = {
+        ...watchedPr,
+        snapshot: {
+          state,
+          title: "Improve search",
+          headBranch: "search",
+          baseBranch: "main",
+          isDraft: false,
+          updatedAt: null,
+          syncedAt: runtime.updatedAt,
+        },
+      };
+      expect(inboxSection({ ...watched, pullRequests: [closedPr] })).toBe("active");
+    }
+    const gitLabWatch = {
+      ...watchedPr,
+      host: "gitlab.com",
+      url: "https://gitlab.com/acme/app/-/merge_requests/7",
+    };
+    expect(inboxSection({ ...watched, pullRequests: [gitLabWatch] })).toBe("active");
+  });
+
   it("keeps a ready plan in the inbox while background work runs", () => {
     expect(
       isSidebarThreadWorking({
@@ -1192,18 +1300,22 @@ describe("Working shelf (beta)", () => {
       row("a2", "active"),
       marker("working-header"),
       row("w1", "working"),
+      marker("watching-header"),
+      row("m1", "watching"),
       marker("settled-header"),
       row("s1", "settled"),
     ];
 
-    it("never drops into the Working shelf, and keeps it out of the inbox order", () => {
+    it("keeps Working and Watching rows out of inbox drops and ordering", () => {
       expect(resolveSidebarDropTarget(items, "a1", "w1")).toBeNull();
+      expect(resolveSidebarDropTarget(items, "a1", "m1")).toBeNull();
       expect(resolveSidebarDropTarget(items, "p1", "a2")).toEqual({
         section: "active",
         pinnedOrder: [],
         activeOrder: ["a1", "a2", "p1"],
       });
       expect(resolveSidebarDropVerb("active", "working")).toBeNull();
+      expect(resolveSidebarDropVerb("active", "watching")).toBeNull();
     });
 
     it.each([

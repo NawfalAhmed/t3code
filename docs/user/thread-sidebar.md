@@ -161,6 +161,14 @@ choice.
 While this is on, the active list is ordered by when each thread last came back to you, so you
 cannot drag or move threads within it. Your saved order returns when you turn it off.
 
+### Fold threads watching pull requests
+
+Turn on **Settings → General → Watching section** on web or desktop to fold away threads waiting
+for updates on GitHub pull requests. They stay in Watching after checks finish while the watch
+is active. A thread that needs your answer, permission, or plan review returns to the inbox.
+A new turn follows your Working section preference. When Working is on, a thread also stays there
+while the agent is responsible for merging its pull request. Watching works with Working on or off.
+
 ### Group threads by project (beta)
 
 Turn on **Settings → Labs → Boring sidebar (group by project)** on web and desktop to put active
