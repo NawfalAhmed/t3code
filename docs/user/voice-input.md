@@ -2,9 +2,9 @@
 
 Dictate into the composer instead of typing. The transcript lands in your draft
 for review, and only sending the message sends anything to an agent. Dictation
-also works in citation comments, scheduled task prompts, diff and file
-annotations, pull request comments, replies, and review summaries, and in the
-desktop app's browser annotation editor.
+also works in scheduled task prompts, diff and file annotations, pull request
+comments, replies, and review summaries, and in the desktop app's browser
+annotation editor.
 
 On iPhone and Android, voice input transcribes on the device by default. To opt in
 to a named environment on that phone, open **Settings → Voice → Transcribe on**. See
@@ -98,6 +98,9 @@ same way, and the shortcut targets the editor that has focus, or the composer
 when none does. In the desktop browser's annotation editor, the microphone and
 the shortcut work while the page has focus; the page you are annotating never
 sees the recording, which runs in T3 Code itself.
+
+In scheduled tasks, finish dictating before saving so you can review the full
+prompt.
 
 **Dictation shortcut** in Voice settings picks how the keybinding behaves:
 **Auto** tap-toggles or records while held, **Hold** records only while the keys
