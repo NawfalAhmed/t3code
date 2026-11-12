@@ -4,7 +4,6 @@ import { isProviderSkillUserInvocable } from "@t3tools/client-runtime/providerSk
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
 import {
   Extension,
-  findChildren,
   InputRule,
   Node,
   wrappingInputRule,
@@ -31,10 +30,6 @@ import type {
   ServerProviderSkill,
 } from "@t3tools/contracts";
 import {
-  serializeAssistantCitation,
-  withAssistantCitationComment,
-} from "@t3tools/shared/assistantCitations";
-import {
   COMPOSER_CONTEXT_CLIPBOARD_MIME,
   encodeComposerContextClipboardHtml,
 } from "@t3tools/shared/composerContextClipboard";
@@ -42,12 +37,10 @@ import {
   createContext,
   use,
   useEffect,
-  useEffectEvent,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -122,7 +115,7 @@ import { basenameOfPath } from "~/pierre-icons";
 import { WorkspaceEntryTooltip } from "./chat/WorkspaceEntryIcon";
 import { FileTagChipContent } from "./chat/FileTagChip";
 import { SkillChipPopover, skillPopoverDescription } from "./chat/SkillInlineText";
-import { AssistantCitationChip } from "./chat/AssistantCitationChip";
+import { AssistantCitationEmbed } from "./chat/AssistantCitationChip";
 import { ModelMentionChip, modelMentionKey, modelMentionKeysAtom } from "./chat/ModelMentionChip";
 import { getTimelinePageScrollKey } from "./chat/pageScrollController";
 import { ContextChip } from "./ContextChip";
@@ -131,10 +124,8 @@ import {
   ComposerContextReferenceChip,
   ComposerContextRecordsContext,
 } from "./composerContextPresentation";
-import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { ComposerCodeBlockNodeView } from "./chat/ComposerCodeBlockNodeView";
-import { resolveAssistantCitationCommentDismissal } from "./chat/assistantCitationCommentDismissal";
 import { composerCodeBlockHighlight } from "./composerCodeBlockHighlight";
 import { importPastedComposerText, readPastedPlainText } from "./composerInlineTokenPaste";
 import { didComposerSelectionChangeVisibly } from "./composerSelection";
@@ -145,7 +136,6 @@ export interface ComposerPromptEditorHandle {
   focusAt: (cursor: number) => void;
   focusAtEnd: () => void;
   readSelectionRange: () => { start: number; end: number };
-  requestCitationComment: (request: ComposerCitationCommentRequest) => void;
   readSnapshot: () => {
     value: string;
     cursor: number;
@@ -192,40 +182,9 @@ export interface ComposerPromptEditorProps {
   onPageScrollKeyDown?: (key: "PageUp" | "PageDown") => void;
   onPageScrollKeyUp?: (key: string) => void;
   onPageScrollRelease?: () => void;
-  onCitationSubmitAndSend?: () => boolean;
-  /** Saves unsaved citation text into replacedValue when a controlled rewrite replaces the document. */
-  onCitationDraftSave?: (replacedValue: string, savedValue: string) => void;
   onPaste: React.ClipboardEventHandler<HTMLElement>;
   editorRef: React.RefObject<ComposerPromptEditorHandle | null>;
 }
-
-export type ComposerCitationCommentRequest = {
-  previousValue: string;
-  value: string;
-  citationStart: number;
-  sourceAnchor: AssistantCitationSourceAnchor;
-  insertedSpaces: CitationInsertedSpaces;
-};
-
-type CitationInsertedSpaces = { before: boolean; after: boolean };
-
-type OpenCitationComment = {
-  key: string;
-  sourceAnchor?: AssistantCitationSourceAnchor;
-  removeOnCancel?: CitationInsertedSpaces;
-};
-
-const ComposerCitationCommentContext = createContext<{
-  openComment: OpenCitationComment | null;
-  onOpenChange: (citeKey: string, open: boolean) => void;
-  onDraftChange: (citeKey: string, comment: string) => void;
-  onSubmitAndSend: () => boolean;
-}>({
-  openComment: null,
-  onOpenChange: () => {},
-  onDraftChange: () => {},
-  onSubmitAndSend: () => false,
-});
 
 const RichComposerSkillsContext = createContext<ReadonlyArray<ServerProviderSkill>>([]);
 
@@ -436,117 +395,27 @@ const ComposerCitationExtension = Node.create({
     return ["span", { "data-composer-citation": "", ...HTMLAttributes }];
   },
   addNodeView() {
-    return ReactNodeViewRenderer(ComposerCitationNodeView);
+    // The card owns its clicks; a node selection paints stray highlight bars around it.
+    return ReactNodeViewRenderer(ComposerCitationNodeView, { stopEvent: () => true });
   },
 });
 
 function ComposerCitationNodeView({ node, editor, getPos }: NodeViewProps) {
-  const commentContext = use(ComposerCitationCommentContext);
   const citation = node.attrs.citation as AssistantCitation;
-  const citeKey = node.attrs.citeKey as string;
-  const commentTarget =
-    commentContext.openComment?.key === citeKey ? commentContext.openComment : null;
-
-  const nodePos = () => {
-    const pos = typeof getPos === "function" ? getPos() : null;
-    return typeof pos === "number" ? pos : null;
+  const remove = () => {
+    const pos = typeof getPos === "function" ? getPos() : undefined;
+    if (!editor.isEditable || typeof pos !== "number") return;
+    const end = pos + node.nodeSize;
+    const to = editor.state.doc.textBetween(end, end + 1) === " " ? end + 1 : end;
+    editor.chain().focus().deleteRange({ from: pos, to }).run();
   };
-
-  const onSaveComment = (comment: string): boolean => {
-    if (!editor.isEditable) return false;
-    const pos = nodePos();
-    if (pos === null) return false;
-    const current = editor.state.doc.nodeAt(pos);
-    if (!current || current.type.name !== "composer-citation") return false;
-    const currentCitation = current.attrs.citation as AssistantCitation;
-    const next = withAssistantCitationComment(currentCitation, comment);
-    const tr = editor.state.tr.setNodeMarkup(pos, undefined, {
-      ...current.attrs,
-      citation: next,
-      source: serializeAssistantCitation(next),
-    });
-    editor.view.dispatch(tr);
-    return true;
-  };
-
-  const removeOnCancel = commentTarget?.removeOnCancel;
-  const onRemove = () => {
-    if (!removeOnCancel) return;
-    const pos = nodePos();
-    if (pos === null) return;
-    const { doc } = editor.state;
-    const current = doc.nodeAt(pos);
-    if (!current) return;
-    const end = pos + current.nodeSize;
-    const from = removeOnCancel.before && doc.textBetween(pos - 1, pos) === " " ? pos - 1 : pos;
-    const to = removeOnCancel.after && doc.textBetween(end, end + 1) === " " ? end + 1 : end;
-    // A read-only composer (dictation) can still receive a new citation, so Cancel must undo it.
-    const chain = editor.chain();
-    (editor.isEditable ? chain.focus() : chain).deleteRange({ from, to }).run();
-  };
-
-  const sentRef = useRef(false);
-  const onRestoreFocus = () => {
-    const sent = sentRef.current;
-    sentRef.current = false;
-    if (!editor.isEditable) return;
-    const pos = nodePos();
-    const current = pos === null ? null : editor.state.doc.nodeAt(pos);
-    if (pos === null || current?.type.name !== "composer-citation") {
-      if (sent) editor.view.focus();
-      return;
-    }
-    // The send's controlled rewrite may still be pending; emitting this caret move would restore the old prompt.
-    editor
-      .chain()
-      .setMeta(SILENT_SELECTION_META, sent)
-      .focus(pos + current.nodeSize)
-      .run();
-  };
-
   return (
-    <NodeViewWrapper
-      as="span"
-      className={CHIP_NODE_SELECTION_CLASS_NAME}
-      contentEditable={false}
-      spellCheck={false}
-      data-composer-citation-chip="true"
-      onKeyDown={(event: ReactKeyboardEvent<HTMLElement>) => {
-        if (
-          !editor.isEditable ||
-          event.key !== "Tab" ||
-          event.shiftKey ||
-          event.altKey ||
-          event.metaKey ||
-          event.ctrlKey ||
-          !(event.target instanceof HTMLElement) ||
-          event.target.dataset.citationCommentTrigger === undefined
-        ) {
-          return;
-        }
-        event.preventDefault();
-        onRestoreFocus();
-      }}
-    >
-      <AssistantCitationChip
+    <NodeViewWrapper as="span" className="block select-none py-1" contentEditable={false}>
+      <AssistantCitationEmbed
         citation={citation}
-        commentEditor={{
-          open: commentTarget !== null,
-          sourceAnchor: commentTarget?.sourceAnchor,
-          onOpenChange: (open) => {
-            if (open && !editor.isEditable) return;
-            commentContext.onOpenChange(citeKey, open);
-          },
-          ...(removeOnCancel ? { onCancel: onRemove } : {}),
-          onSave: onSaveComment,
-          onDraftChange: (comment) => commentContext.onDraftChange(citeKey, comment),
-          onSaveAndSend: (comment) => {
-            if (!onSaveComment(comment)) return false;
-            sentRef.current = commentContext.onSubmitAndSend();
-            return true;
-          },
-          onRestoreFocus,
-        }}
+        leading
+        trailing
+        onRemove={editor.isEditable ? remove : undefined}
       />
     </NodeViewWrapper>
   );
@@ -947,8 +816,6 @@ function ComposerPromptEditorTiptapInner(
     onPageScrollKeyDown,
     onPageScrollKeyUp,
     onPageScrollRelease,
-    onCitationSubmitAndSend,
-    onCitationDraftSave,
     onPaste,
     editorRef,
     restoreFocusRef,
@@ -993,28 +860,7 @@ function ComposerPromptEditorTiptapInner(
   const selectionRangeRef = useRef({ start: initialExpandedCursor, end: initialExpandedCursor });
   const isApplyingControlledUpdateRef = useRef(false);
   const hasAppliedControlledSelectionRef = useRef(false);
-  const citationRequestRef = useRef<ComposerCitationCommentRequest | null>(null);
-  const [openCitation, setOpenCitation] = useState<OpenCitationComment | null>(null);
-  const citationDraftRef = useRef<{ key: string; comment: string } | null>(null);
   const [isEmpty, setIsEmpty] = useState(value.length === 0);
-
-  const citationCommentActions = {
-    openComment: openCitation,
-    onOpenChange: (nodeKey: string, open: boolean) => {
-      if (!open && citationDraftRef.current?.key === nodeKey) citationDraftRef.current = null;
-      setOpenCitation((current) => {
-        if (open) {
-          if (current?.key === nodeKey) return current;
-          return { key: nodeKey };
-        }
-        return current?.key === nodeKey ? null : current;
-      });
-    },
-    onDraftChange: (nodeKey: string, comment: string) => {
-      citationDraftRef.current = { key: nodeKey, comment };
-    },
-    onSubmitAndSend: onCitationSubmitAndSend ?? (() => false),
-  };
 
   const handleEditorChange = (updated: TiptapEditor, transaction: Transaction) => {
     const map = serializeEditorDoc(updated.state.doc);
@@ -1229,31 +1075,6 @@ function ComposerPromptEditorTiptapInner(
                   .scrollIntoView(),
               );
               return true;
-            }
-          }
-          // Native tab order skips citation comment buttons inside the editor.
-          if (
-            event.key === "Tab" &&
-            event.shiftKey &&
-            !event.altKey &&
-            !event.metaKey &&
-            !event.ctrlKey &&
-            view.state.selection.empty
-          ) {
-            const { $from } = view.state.selection;
-            const citation = $from.nodeBefore;
-            if (citation?.type.name === "composer-citation") {
-              const chip = view.nodeDOM($from.pos - citation.nodeSize);
-              const commentButton =
-                chip instanceof HTMLElement
-                  ? chip.querySelector<HTMLElement>("[data-citation-comment-trigger]")
-                  : null;
-              if (commentButton) {
-                event.preventDefault();
-                event.stopPropagation();
-                commentButton.focus();
-                return true;
-              }
             }
           }
           if (event.key === "Enter" && (event.isComposing || event.keyCode === 229)) {
@@ -1545,37 +1366,6 @@ function ComposerPromptEditorTiptapInner(
     return next;
   };
 
-  // Save citation drafts before controlled rewrites unmount their node views.
-  const saveCitationDraft = useEffectEvent((current: TiptapEditor, replacedValue: string) => {
-    const draft = citationDraftRef.current;
-    citationDraftRef.current = null;
-    if (!draft || !onCitationDraftSave) return;
-    const [target] = findChildren(
-      current.state.doc,
-      (node) => node.type.name === "composer-citation" && node.attrs.citeKey === draft.key,
-    );
-    if (!target) return;
-    const { node, pos } = target;
-    const citation = node.attrs.citation as AssistantCitation;
-    const dismissal = resolveAssistantCitationCommentDismissal({
-      reason: "none",
-      draft: draft.comment,
-      savedComment: citation.comment,
-    });
-    if (dismissal.kind !== "commit") return;
-    const next = withAssistantCitationComment(citation, dismissal.comment);
-    current.view.dispatch(
-      current.state.tr
-        .setNodeMarkup(pos, undefined, {
-          ...node.attrs,
-          citation: next,
-          source: serializeAssistantCitation(next),
-        })
-        .setMeta("addToHistory", false),
-    );
-    onCitationDraftSave(replacedValue, serializeEditorDoc(current.state.doc).value);
-  });
-
   // The one place the controlled value reaches the editor. Imperative handlers compare against
   // the committed value, so it is recorded here even before the editor exists.
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- writes the controlled value and cursor into the Tiptap document before paint
@@ -1612,10 +1402,7 @@ function ComposerPromptEditorTiptapInner(
     if (!initialSelection && previousSnapshot.value === value && !isFocused) return;
 
     isApplyingControlledUpdateRef.current = true;
-    const pendingCitation =
-      citationRequestRef.current?.value === value ? citationRequestRef.current : null;
     if (previousSnapshot.value !== value) {
-      saveCitationDraft(editor, previousSnapshot.value);
       editor.commands.setContent(
         buildDocJson(value, skillLabelFor, { styling: richText, literalText, isKnownModel }),
         {
@@ -1624,28 +1411,7 @@ function ComposerPromptEditorTiptapInner(
       );
     }
     selectMarkdownOffset(editor, normalizedExpandedCursor);
-    const map = serializeEditorDoc(editor.state.doc);
     if (isFocused) scrollTiptapCaretIntoView(editor);
-    if (pendingCitation) {
-      citationRequestRef.current = null;
-      const target = map.runs.find(
-        (run) =>
-          run.kind === "token" &&
-          run.nodeName === "composer-citation" &&
-          run.mdStart === pendingCitation.citationStart,
-      );
-      if (target) {
-        const node = editor.state.doc.nodeAt(target.pmPos);
-        const citeKey = (node?.attrs as { citeKey?: string } | undefined)?.citeKey;
-        if (citeKey) {
-          setOpenCitation({
-            key: citeKey,
-            sourceAnchor: pendingCitation.sourceAnchor,
-            removeOnCancel: pendingCitation.insertedSpaces,
-          });
-        }
-      }
-    }
     queueMicrotask(() => {
       isApplyingControlledUpdateRef.current = false;
     });
@@ -1741,29 +1507,6 @@ function ComposerPromptEditorTiptapInner(
         readSnapshot();
         return selectionRangeRef.current;
       },
-      requestCitationComment: (request) => {
-        citationRequestRef.current = request;
-        if (!editor) return;
-        const map = serializeEditorDoc(editor.state.doc);
-        if (map.value !== request.value) return;
-        const target = map.runs.find(
-          (run) =>
-            run.kind === "token" &&
-            run.nodeName === "composer-citation" &&
-            run.mdStart === request.citationStart,
-        );
-        if (!target) return;
-        const node = editor.state.doc.nodeAt(target.pmPos);
-        const citeKey = (node?.attrs as { citeKey?: string } | undefined)?.citeKey;
-        if (citeKey) {
-          citationRequestRef.current = null;
-          setOpenCitation({
-            key: citeKey,
-            sourceAnchor: request.sourceAnchor,
-            removeOnCancel: request.insertedSpaces,
-          });
-        }
-      },
       readSnapshot,
       isCaretOnVisualEdge: (edge) => {
         const snapshot = readSnapshot();
@@ -1830,69 +1573,67 @@ function ComposerPromptEditorTiptapInner(
   return (
     <RichComposerSkillsContext value={skills}>
       <ComposerContextRecordsContext value={contextRecords}>
-        <ComposerCitationCommentContext value={citationCommentActions}>
-          <div
-            className={cn(
-              "relative flow-root font-(family-name:--font-composer,var(--font-sans)) text-(length:--font-size-prompt,var(--text-sm)) max-sm:pointer-coarse:text-(length:--font-size-prompt-touch)",
-              containerClassName,
-            )}
-          >
-            <EditorContent
-              editor={editor}
-              onKeyDown={(event) => {
-                if (
-                  event.key === "Control" ||
-                  event.key === "Meta" ||
-                  event.key === "Alt" ||
-                  event.key === "Shift"
-                ) {
-                  onPageScrollRelease?.();
-                }
-                if (event.key !== "PageUp" && event.key !== "PageDown") return;
-                const target = event.currentTarget.querySelector(
-                  '[data-testid="composer-editor"]',
-                ) as HTMLElement | null;
-                if (!target) return;
-                const pageScrollKey = getTimelinePageScrollKey({
-                  altKey: event.altKey,
-                  clientHeight: target.clientHeight,
-                  ctrlKey: event.ctrlKey,
-                  defaultPrevented: event.defaultPrevented,
-                  isComposing: event.nativeEvent.isComposing,
-                  key: event.key,
-                  keyCode: event.keyCode,
-                  metaKey: event.metaKey,
-                  scrollHeight: target.scrollHeight,
-                  scrollTop: target.scrollTop,
-                  shiftKey: event.shiftKey,
-                });
-                if (!pageScrollKey) {
-                  onPageScrollRelease?.();
-                  return;
-                }
-                if (!onPageScrollKeyDown) return;
-                event.preventDefault();
-                onPageScrollKeyDown(pageScrollKey);
-              }}
-              onKeyUp={(event) => onPageScrollKeyUp?.(event.key)}
-              onBlur={onPageScrollRelease}
-              onPasteCapture={onPaste}
-              onCopyCapture={(event) => handleCopyCut(event, false)}
-              onCutCapture={(event) => handleCopyCut(event, true)}
-            />
-            {isEmpty && contextRecords.size === 0 && placeholder ? (
-              <div
-                className={cn(
-                  "pointer-events-none absolute inset-0 leading-relaxed text-placeholder",
-                  placeholderClassName,
-                )}
-              >
-                {placeholder}
-                {placeholderSuffix}
-              </div>
-            ) : null}
-          </div>
-        </ComposerCitationCommentContext>
+        <div
+          className={cn(
+            "relative flow-root font-(family-name:--font-composer,var(--font-sans)) text-(length:--font-size-prompt,var(--text-sm)) max-sm:pointer-coarse:text-(length:--font-size-prompt-touch)",
+            containerClassName,
+          )}
+        >
+          <EditorContent
+            editor={editor}
+            onKeyDown={(event) => {
+              if (
+                event.key === "Control" ||
+                event.key === "Meta" ||
+                event.key === "Alt" ||
+                event.key === "Shift"
+              ) {
+                onPageScrollRelease?.();
+              }
+              if (event.key !== "PageUp" && event.key !== "PageDown") return;
+              const target = event.currentTarget.querySelector(
+                '[data-testid="composer-editor"]',
+              ) as HTMLElement | null;
+              if (!target) return;
+              const pageScrollKey = getTimelinePageScrollKey({
+                altKey: event.altKey,
+                clientHeight: target.clientHeight,
+                ctrlKey: event.ctrlKey,
+                defaultPrevented: event.defaultPrevented,
+                isComposing: event.nativeEvent.isComposing,
+                key: event.key,
+                keyCode: event.keyCode,
+                metaKey: event.metaKey,
+                scrollHeight: target.scrollHeight,
+                scrollTop: target.scrollTop,
+                shiftKey: event.shiftKey,
+              });
+              if (!pageScrollKey) {
+                onPageScrollRelease?.();
+                return;
+              }
+              if (!onPageScrollKeyDown) return;
+              event.preventDefault();
+              onPageScrollKeyDown(pageScrollKey);
+            }}
+            onKeyUp={(event) => onPageScrollKeyUp?.(event.key)}
+            onBlur={onPageScrollRelease}
+            onPasteCapture={onPaste}
+            onCopyCapture={(event) => handleCopyCut(event, false)}
+            onCutCapture={(event) => handleCopyCut(event, true)}
+          />
+          {isEmpty && contextRecords.size === 0 && placeholder ? (
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-0 leading-relaxed text-placeholder",
+                placeholderClassName,
+              )}
+            >
+              {placeholder}
+              {placeholderSuffix}
+            </div>
+          ) : null}
+        </div>
       </ComposerContextRecordsContext>
     </RichComposerSkillsContext>
   );

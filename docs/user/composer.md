@@ -129,18 +129,13 @@ Leaving reasoning level or service tier unset uses the provider's own configurat
 ## Quote an assistant response
 
 On web and desktop, select text within one assistant response and choose
-**Cite in composer**. You can add a comment about the quote and write instructions
-around it.
+**Cite in composer**. The quote appears in the composer as a card, the same as in a
+sent message. Keep typing below it to say what you want done with it.
 
 Select the quote in a draft or sent message to return to its source. If the source
 is unavailable or has changed, the saved quote remains readable.
 
-The chip shows your comment when it has one, or a short quote preview otherwise. Use the pencil
-button to add or change the comment. To remove the citation, place the caret beside its chip and
-delete it like other inline context. Copying, reloading, and restoring a
-[stashed prompt](#prompt-stash) keep each comment
-with its quote, and sending tells the agent which words were quoted and which comment you wrote.
-The quoted text and comment count toward the message limit.
+Use the × on the card to remove the citation. The quoted text counts toward the message limit.
 
 Mobile displays saved quotes and comments, but does not create citations or
 navigate to their sources.

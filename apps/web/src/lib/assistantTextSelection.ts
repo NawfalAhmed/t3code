@@ -1,4 +1,4 @@
-import { ASSISTANT_CITATION_CONTEXT_LENGTH, type AssistantCitation } from "@t3tools/contracts";
+import { ASSISTANT_CITATION_CONTEXT_LENGTH } from "@t3tools/contracts";
 
 import { mathWrapperOf } from "../markdown-clipboard";
 
@@ -9,30 +9,6 @@ export type AssistantTextSelector = {
   readonly prefix: string;
   readonly suffix: string;
 };
-
-export type AssistantCitationSourceAnchor = {
-  source: HTMLElement;
-  range: Range;
-  viewport: HTMLElement;
-};
-
-export function findAssistantCitationSourceAnchor(
-  document: Document,
-  citation: AssistantCitation,
-): AssistantCitationSourceAnchor | null {
-  const source = [
-    ...document.querySelectorAll<HTMLElement>("[data-assistant-citation-source]"),
-  ].find(
-    (element) =>
-      element.dataset.assistantCitationSource === citation.messageId &&
-      element.dataset.assistantCitationEnvironment === citation.environmentId &&
-      element.dataset.assistantCitationThread === citation.threadId,
-  );
-  const viewport = source?.closest<HTMLElement>("[data-assistant-citation-viewport]");
-  if (!source || !viewport) return null;
-  const range = resolveAssistantCitationRange(source, citation);
-  return range ? { source, range, viewport } : null;
-}
 
 const CONTROL_SELECTOR = "button, input, textarea, select, [role=button], [contenteditable]";
 const EXCLUDED_SELECTOR = `${CONTROL_SELECTOR}, [hidden], [aria-hidden=true], script, style, template, noscript, svg`;
