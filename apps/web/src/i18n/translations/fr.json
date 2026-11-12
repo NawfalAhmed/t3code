@@ -3140,24 +3140,6 @@
   "9251bb742f60720d": "{hours} h",
   "a1e982c6047c0860": "Aller à la réponse citée : {label}",
   "c156140c3f5ebb75": "Aller à la réponse à laquelle ceci répond : {label}",
-  "f8031a49c6e9fe25": "Voir le texte cité de l’assistant : {label}",
-  "bc8c06fc6e15744d": "Modifier le commentaire de la citation",
-  "3461664615eadd38": "Ajouter un commentaire à la citation",
-  "0fe5a2bc51368d37": "Commenter le texte sélectionné",
-  "65f7fd6a7f3a586e": "Enter pour enregistrer le commentaire de la citation ; Command/Ctrl+Enter pour enregistrer et envoyer ; Shift+Enter pour une nouvelle ligne.",
-  "e3903eb8bb6b0731": "Ajoutez un commentaire facultatif...",
-  "8de42885ab740951": "Raccourcir le commentaire",
-  "1d8f22daf84483a8": "Enregistrer",
-  "8cd59ff5c8cc17f9": [
-    "Les commentaires peuvent contenir jusqu’à",
-    " ",
-    {
-      "i": 1,
-      "k": "_gt_value_1",
-      "v": "v"
-    },
-    " caractères."
-  ],
   "c86597c99c507722": "Impossible d’ouvrir la réponse citée",
   "2d52b83b33b6d842": "Cliquez sur la citation pour réessayer.",
   "a1b2db80983184df": "Le texte cité a changé",
@@ -12166,6 +12148,7 @@
   "cb0852f8e19d3e46": "{provider}: {windows}",
   "810e69d8207012d8": "No matching models.",
   "d6d9fc563f9c484e": "in project",
+  "c5d41a5d183ef9f1": "Remove citation",
   "44588d4ef408bfa0": "Connectez-vous au compte T3 Connect associé à cet appareil.",
   "5f08f0994dfe385a": "Nom de l’appareil",
   "8da596a52355d32a": "Le nom que cet appareil partage avec les clients T3 Code. Laissez le champ vide pour utiliser le nom du système.",
