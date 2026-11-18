@@ -542,9 +542,9 @@ export function useComposerCommandMenu({
           ? buildComposerModelItems(modelOptions, trigger.query, modelProviders)
           : [];
       return [
+        ...modelItems,
         ...threadItems,
         ...environmentItems,
-        ...modelItems,
         ...pathSearch.entries.map((entry) => {
           const parts = entry.path.split("/");
           return {
